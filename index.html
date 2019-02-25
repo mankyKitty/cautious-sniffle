@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Document</title>
+    </head>
+    <body>
+        <div id="foo">
+            <p class="show"> TACO </p>
+            <p class="hide"> FISH </p>
+            <button id="elem">FOO</button>
+        </div>
+    </body>
+    <script>
+     document.onreadystatechange = function () {
+         console.log(document.readyState);
+     }
+
+     var elem = document.querySelector('#elem');
+     document.addEventListener('click', function (event) {
+
+         console.log('wut');
+	       if (event.target.matches('.show')) {
+		         elem.removeAttribute('hidden');
+		         elem.classList.add('fadeInDown');
+	       }
+
+	       if (event.target.matches('.hide')) {
+		         elem.setAttribute('hidden', 'true');
+		         elem.classList.remove('fadeInDown');
+	       }
+
+     }, false);
+
+    </script>
+</html>

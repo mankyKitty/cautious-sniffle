@@ -1,0 +1,4 @@
+:set -i/src
+import Control.Lens
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO

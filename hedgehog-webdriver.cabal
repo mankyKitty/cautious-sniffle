@@ -17,12 +17,24 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Hedgehog.WebDriver
+                     , Protocol.Webdriver.Generate
+
   -- other-modules:
   -- other-extensions:
   build-depends:       base >=4.11 && <4.12
                      , webdriver
                      , hedgehog
                      , text
+                     , waargonaut
+                     , natural
+                     , lens
+                     , mtl
+                     , text
+                     , bytestring
+                     , attoparsec
+                     , containers
+                     , algebraic-graphs
+                     , generic-trie
 
   hs-source-dirs:      src
   ghc-options:         -Wall

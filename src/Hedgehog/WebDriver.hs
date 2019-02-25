@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Hedgehog.WebDriver (main) where
 
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.IO.Class (MonadIO)
 
 import           Data.Maybe             (fromMaybe)
 import           Data.Text              (Text)
@@ -106,11 +106,34 @@ prop_button_updates sess = withTests 5 . property $ do
 
   executeSequential st actions
 
-ff  = WD.useBrowser WD.firefox WD.defaultConfig
+-- ff :: WD.WDConfig
+-- ff = WD.modifyCaps f (WD.useBrowser fox WD.defaultConfig)
+--   where
+--     fox = WD.firefox
+
+--     f c = c
+--       { WD.additionalCaps = (WD.additionalCaps c)
+--         -- These don't seem to really do anything.
+--         <> [ ("marionette", "true")
+--            , ("headless", "true")
+--            ]
+--       }
+
+chromium :: WD.WDConfig
+chromium = WD.useBrowser chrm WD.defaultConfig
+  where
+    chrm = WD.chrome
+      { WD.chromeBinary = Just "/run/current-system/sw/bin/chromium-browser"
+      , WD.chromeOptions = [ "--headless"
+                           , "--mute-audio"
+                           , "--disable-gpu"
+                           , "--no-sandbox"
+                           ]
+      }
 
 main :: IO ()
 main = do
-  r <- WD.runSession ff $ do
+  r <- WD.runSession chromium $ do
     WD.openPage "http://uitestingplayground.com/textinput"
     sess <- getSession
 
