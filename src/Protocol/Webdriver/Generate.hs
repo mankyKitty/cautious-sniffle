@@ -1,25 +1,27 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
+
 module Protocol.Webdriver.Generate where
 
 import           Control.Monad              ((<=<), (>=>))
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 
-import           Control.Lens               (cons, ifoldr, imap, (^.), (^?),
-                                             _head, _last)
+import           Control.Lens               (snoc)
 import           Control.Monad.Error.Lens   (throwing)
 
 import qualified Natural                    as Nat
 
-import Data.Maybe (fromMaybe)
 import qualified Data.ByteString            as BS
 
-import           Data.GenericTrie           (Trie)
-import qualified Data.GenericTrie           as GT
+import           Data.Foldable              (fold)
 
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
+
+import           Data.Tree                  (Tree)
+import qualified Data.Tree                  as Tree
+
+import qualified Data.List                  as L
+import           Data.List.NonEmpty         (NonEmpty ((:|)))
 
 import qualified Data.Attoparsec.ByteString as BS
 
@@ -27,12 +29,6 @@ import qualified Waargonaut                 as W
 import           Waargonaut.Decode          (CursorHistory, Decoder)
 import qualified Waargonaut.Decode          as D
 import           Waargonaut.Decode.Error    (DecodeError, _ConversionFailure)
-
-import           Algebra.Graph              (Graph)
-import qualified Algebra.Graph              as G
-
--- import           Algebra.Graph.AdjacencyMap              (AdjacencyMap)
--- import qualified Algebra.Graph.AdjacencyMap             as G
 
 -- General Route Definition Structure:
 --
@@ -146,13 +142,23 @@ instance Show RP where
 instance Ord RP where
   compare (RP (a,_)) (RP (b,_)) = compare a b
 
-ppGraph :: Graph RP -> Text
-ppGraph = G.foldg "root" (T.pack . show) (\a b -> a <> "\n  :<|> " <> b <> "\n") (\a b -> a <> " :> " <> b)
+-- typeishToHaskell :: Typeish -> String
+-- typeishToHaskell Objectly       = "(Map Text Text)"
+-- typeishToHaskell Stringly       = "Text"
+-- typeishToHaskell Numberly       = "Int"
+-- typeishToHaskell Nully          = "()"
+-- typeishToHaskell Booleanly      = "Bool"
+-- typeishToHaskell Lol            = "Text"
+-- typeishToHaskell (Array t)      = "["<> typeishToHaskell t <> "]"
+-- typeishToHaskell (Possibly [])  = "()"
+-- typeishToHaskell (Possibly [a]) = "(Maybe " <> typeishToHaskell a  <> ")"
+-- typeishToHaskell (Possibly ts)   = "[" <> fold (L.intersperse "," (typeishToHaskell <$> ts)) <> "]"
 
 ppRP :: RoutePiece -> String
-ppRP (Simple t)             = T.unpack t
-ppRP (Param (PathParam pp)) = "Capture " <> T.unpack pp <> " Text"
-ppRP (MethodTail m mr)      = show m <> " " <> maybe "'[] ()" (\res -> "'[JSON] " <>  title (_respName res)) mr
+ppRP (Simple t)             = "\"" <> T.unpack t <> "\""
+ppRP (Param (PathParam pp)) = "Capture " <> "\"" <> T.unpack pp <> "\"" <> " Text"
+ppRP (MethodTail m mr)      = show m <> " "
+  <> maybe "'[] ()" (\res -> "'[WaargJSON WD] " <> title (_respName res)) mr
   where
     title = T.unpack . T.toTitle
 
@@ -160,6 +166,64 @@ transformPath :: Route -> [RoutePiece]
 transformPath = fmap mkPiece . filter (not . T.null) . T.splitOn "/" . _routeRaw
   where mkPiece p | T.isPrefixOf ":" p = Param (PathParam p)
                   | otherwise          = Simple p
+
+createForest :: NonEmpty Route -> Tree.Forest RoutePiece
+createForest = Tree.unfoldForest f . foldMap mkRoutePathTree
+  where
+    -- NER NER NONEMPTY LIST FOOL!
+    f [a]   = (a, [])
+    f (a:t) = (a, [t])
+
+collapseForest :: Tree.Forest RoutePiece -> Tree.Forest RoutePiece
+collapseForest xs = if length roots < length xs
+  then (\r -> Tree.Node r . collapseForest $ collectSubForests r xs) <$> roots
+  else xs
+  where
+    roots                  = L.nub . fmap Tree.rootLabel $ xs
+    collectSubForests root = foldMap Tree.subForest . filter ((== root) . Tree.rootLabel)
+
+alternate :: Int -> String
+alternate n = "\n" <> replicate n ' ' <> " :<|> "
+
+combine :: String
+combine = " :> "
+
+treeToString :: Int -> Tree.Tree RoutePiece -> String
+treeToString _   (Tree.Node root [])       =
+  -- "GET '[Json] ()"
+  ppRP root
+treeToString lvl (Tree.Node root [child])  =
+  -- "a" :> "b"
+  ppRP root <> combine <> treeToString (lvl + 2) child
+treeToString lvl (Tree.Node root children) =
+  -- "a" :> ("b" :<|> "c" :<|> "d")
+  ppRP root <> combine <> " (" <> spaces <> L.drop indent childRoutes <> spaces <> ")"
+  where
+    lvl' = lvl + 2
+    childRoutes = forestToString lvl' children
+    indent = length (alternate lvl')
+    spaces = '\n':replicate (indent - 7) ' '
+
+forestToString :: Int -> [Tree RoutePiece] -> String
+forestToString lvl = foldMap (mappend (alternate lvl) . treeToString lvl )
+
+createServantRoutes :: Tree.Forest RoutePiece -> String
+createServantRoutes = (<> "\n") . mappend "root " . forestToString 2
+
+wretched :: IO (Tree.Forest RoutePiece)
+wretched = do
+  Right r <- parseWebdriverJSON "protocol/webdriver.json"
+  pure $ collapseForest (createForest r)
+
+goDo :: IO ()
+goDo = do
+  Right r <- parseWebdriverJSON "protocol/webdriver.json"
+  let mooshedForest = collapseForest (createForest r)
+  putStr . Tree.drawForest $ (fmap . fmap) ppRP mooshedForest
+
+mkRoutePathTree :: Route -> [[RoutePiece]]
+mkRoutePathTree r = snoc (transformPath r) <$> mkMths (_routeMethods r)
+  where mkMths  = fmap (\m -> MethodTail (_routeMethod m) (_routeResp m))
 
 decodeBodyParam :: Monad f => Decoder f BodyParam
 decodeBodyParam = BodyParam
@@ -214,9 +278,7 @@ decodeRoute = D.withCursor $ \c -> do
   rawpath <- D.focus D.text c
   methodCurs <- D.moveRight1 c >>= D.down
 
-  Route rawpath (getpathparams rawpath) <$>
-    D.foldCursor
-    (flip cons)
+  Route rawpath (getpathparams rawpath) <$> D.foldCursor snoc
     (D.moveRightN (Nat.successor' (Nat.successor' Nat.zero')))
     mempty
     decodeRouteMethod
@@ -227,12 +289,11 @@ decodeRoute = D.withCursor $ \c -> do
       . filter (\p -> not (T.null p) && T.isPrefixOf ":" p )
       . T.splitOn "/"
 
-decodeRoutes :: Monad f => Decoder f [Route]
-decodeRoutes = D.withCursor $ D.down >=> D.foldCursor (flip cons)
-  (D.moveRightN (Nat.successor' (Nat.successor' Nat.zero')))
-  mempty
-  decodeRoute
+decodeRoutes :: Monad f => Decoder f (NonEmpty Route)
+decodeRoutes = D.withCursor $ D.down >=> \c ->
+  (:|) <$> D.focus decodeRoute c <*> (step c >>= D.foldCursor snoc step mempty decodeRoute)
+  where step = D.moveRightN (Nat.successor' (Nat.successor' Nat.zero'))
 
-parseWebdriverJSON :: MonadIO m => FilePath -> m (Either (DecodeError, CursorHistory) [Route])
+parseWebdriverJSON :: MonadIO m => FilePath -> m (Either (DecodeError, CursorHistory) (NonEmpty Route))
 parseWebdriverJSON = D.runDecode decodeRoutes (D.parseWith BS.parseOnly W.parseWaargonaut)
   . D.mkCursor <=< liftIO . BS.readFile
