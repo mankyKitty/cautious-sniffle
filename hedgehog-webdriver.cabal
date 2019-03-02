@@ -33,8 +33,6 @@ library
                      , bytestring
                      , attoparsec
                      , containers
-                     , algebraic-graphs
-                     , generic-trie
 
   hs-source-dirs:      src
   ghc-options:         -Wall

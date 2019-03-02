@@ -1,299 +1,153 @@
 {-# LANGUAGE OverloadedStrings #-}
+module Protocol.Webdriver.Generate
+  ( createServantRoutes
+  , createRequestTypes
+  , createForest
+  , parseWebdriverJSON
+  , parseOrDie
+  ) where
 
-module Protocol.Webdriver.Generate where
+import           Control.Monad               ((>=>))
+import           Control.Monad.IO.Class      (MonadIO, liftIO)
 
-import           Control.Monad              ((<=<), (>=>))
-import           Control.Monad.IO.Class     (MonadIO, liftIO)
+import           Control.Lens                (cons, ifoldMap, over, _head)
 
-import           Control.Lens               (snoc)
-import           Control.Monad.Error.Lens   (throwing)
+import qualified Data.ByteString             as BS
 
-import qualified Natural                    as Nat
+import qualified Data.Char                   as Char
 
-import qualified Data.ByteString            as BS
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T
 
-import           Data.Foldable              (fold)
+import           Data.Tree                   (Tree)
+import qualified Data.Tree                   as Tree
 
-import           Data.Text                  (Text)
-import qualified Data.Text                  as T
+import qualified Data.List                   as L
+import           Data.List.NonEmpty          (NonEmpty)
 
-import           Data.Tree                  (Tree)
-import qualified Data.Tree                  as Tree
+import qualified Data.Attoparsec.ByteString  as BS
 
-import qualified Data.List                  as L
-import           Data.List.NonEmpty         (NonEmpty ((:|)))
+import           Waargonaut.Decode           (CursorHistory)
+import qualified Waargonaut.Decode           as D
+import           Waargonaut.Decode.Error     (DecodeError)
 
-import qualified Data.Attoparsec.ByteString as BS
+import           Protocol.Webdriver.Decoders (decodeRoutes)
+import           Protocol.Webdriver.Types
 
-import qualified Waargonaut                 as W
-import           Waargonaut.Decode          (CursorHistory, Decoder)
-import qualified Waargonaut.Decode          as D
-import           Waargonaut.Decode.Error    (DecodeError, _ConversionFailure)
+quote :: Text -> Text
+quote t = "\"" <> t <> "\""
 
--- General Route Definition Structure:
---
--- "path/:parameter" :{
---   "METHOD": {
---     "command": "functionName",
---     "description": "Short help text"
---     "ref": "link to relevant spec"
---     "parameters": [ -- body content for the request
---       { "name": "param name"
---       , "type": "param type"
---       , "description": "brief description"
---       , "required": "bool"
---       }],
---     "returns": {
---       "type": "method response",
---       "name": "response type",
---       "description": "description of response content",
---     }
---   }
--- }
---
--- Example:
---
--- @
--- "/session": {
---   "POST": {
---     "command": "newSession",
---     "description": "The New Session command creates a new WebDriver session with the endpoint node. If the creation fails, a session not created error is returned.",
---     "ref": "https://w3c.github.io/webdriver/#dfn-new-sessions",
---     "parameters": [{
---       "name": "capabilities",
---       "type": "object",
---       "description": "a JSON object, the set of capabilities that was ultimately merged and matched in the capability processing algorithm",
---       "required": true
---     }],
---     "returns": {
---       "type": "Object",
---       "name": "session",
---       "description": "Object containing sessionId and capabilities of created WebDriver session."
---     }
---   }
- -- },
---
--- @
+alternate :: Int -> Text
+alternate n = "\n" <> T.replicate n " " <> " :<|> "
 
-data Method
-  = GET
-  | POST
-  | DELETE
-  deriving (Show, Eq, Ord)
+combine :: Text
+combine = " :> "
 
-data Typeish
-  = Objectly
-  | Stringly
-  | Numberly
-  | Nully
-  | Booleanly
-  | Lol
-  | Array Typeish
-  | Possibly [Typeish]
-  deriving (Show, Eq, Ord)
+ucFirst :: Text -> Text
+ucFirst = over _head Char.toUpper
 
-newtype PathParam = PathParam Text
-  deriving (Show, Eq, Ord)
-
-data BodyParam = BodyParam
-  { _bodyParamName :: Text
-  , _bodyParamType :: Typeish
-  , _bodyParamDesc :: Text
-  , _bodyParamReqd :: Bool
-  }
-  deriving (Show, Eq)
-
-data Resp = Resp
-  { _respType :: Typeish
-  , _respName :: Text
-  , _respDesc :: Text
-  }
-  deriving (Show, Eq, Ord)
-
-data RouteMethod = RouteMethod
-  { _routeMethod  :: Method
-  , _routeCommand :: Text
-  , _routeDesc    :: Text
-  , _routeRef     :: Text
-  , _routeBody    :: [BodyParam]
-  , _routeResp    :: Maybe Resp
-  }
-  deriving (Show, Eq)
-
-data Route = Route
-  { _routeRaw     :: Text
-  , _routeParams  :: [PathParam]
-  , _routeMethods :: [RouteMethod]
-  }
-  deriving (Show, Eq)
-
-data RoutePiece
-  = Simple Text
-  | Param PathParam
-  | MethodTail Method (Maybe Resp)
-  deriving (Show, Eq, Ord)
-
-newtype RP = RP (Int, RoutePiece)
-  deriving Eq
-
-instance Show RP where
-  show (RP (_, rp)) = ppRP rp
-
-instance Ord RP where
-  compare (RP (a,_)) (RP (b,_)) = compare a b
-
--- typeishToHaskell :: Typeish -> String
--- typeishToHaskell Objectly       = "(Map Text Text)"
--- typeishToHaskell Stringly       = "Text"
--- typeishToHaskell Numberly       = "Int"
--- typeishToHaskell Nully          = "()"
--- typeishToHaskell Booleanly      = "Bool"
--- typeishToHaskell Lol            = "Text"
--- typeishToHaskell (Array t)      = "["<> typeishToHaskell t <> "]"
--- typeishToHaskell (Possibly [])  = "()"
--- typeishToHaskell (Possibly [a]) = "(Maybe " <> typeishToHaskell a  <> ")"
--- typeishToHaskell (Possibly ts)   = "[" <> fold (L.intersperse "," (typeishToHaskell <$> ts)) <> "]"
-
-ppRP :: RoutePiece -> String
-ppRP (Simple t)             = "\"" <> T.unpack t <> "\""
-ppRP (Param (PathParam pp)) = "Capture " <> "\"" <> T.unpack pp <> "\"" <> " Text"
-ppRP (MethodTail m mr)      = show m <> " "
-  <> maybe "'[] ()" (\res -> "'[WaargJSON WD] " <> title (_respName res)) mr
+ppRP :: RoutePiece -> Text
+ppRP (Simple t)             = quote t
+ppRP (Param (PathParam pp)) = "Capture " <> quote pp <> " Text"
+ppRP (ReqBody cmdName _)    = "ReqBody '[WaargJSON WD] " <> ucFirst cmdName
+ppRP (MethodTail m mr)      = methodText m <> " " <> maybe emptyType hasType mr
   where
-    title = T.unpack . T.toTitle
-
-transformPath :: Route -> [RoutePiece]
-transformPath = fmap mkPiece . filter (not . T.null) . T.splitOn "/" . _routeRaw
-  where mkPiece p | T.isPrefixOf ":" p = Param (PathParam p)
-                  | otherwise          = Simple p
+    emptyType   = "'[] ()"
+    hasType res = "'[WaargJSON WD] " <> typeishToHask (_respType res)
 
 createForest :: NonEmpty Route -> Tree.Forest RoutePiece
-createForest = Tree.unfoldForest f . foldMap mkRoutePathTree
+createForest = collapseForest . Tree.unfoldForest f . foldMap mkRoutePathTree
   where
+    transformPath :: Route -> [RoutePiece]
+    transformPath = fmap mkPiece . filter (not . T.null) . T.splitOn "/" . _routeRaw
+      where mkPiece p | T.isPrefixOf ":" p = Param . PathParam . T.tail $ p
+                      | otherwise          = Simple p
+
+    mkRoutePathTree r = mappend (transformPath r) . mkMethod <$> _routeMethods r
+
+    mkMethod m = maybe mthd (:mthd) $ mkReqBody m where 
+      mthd = [MethodTail (_routeMethod m) (_routeResp m)]
+
+    mkReqBody m
+      | null (_routeBody m) = Nothing
+      | otherwise           = Just $ ReqBody (_routeCommand m) (_routeBody m)
+
     -- NER NER NONEMPTY LIST FOOL!
+    f []    = error "the impossible happened (narrator: or did it?)"
     f [a]   = (a, [])
     f (a:t) = (a, [t])
 
 collapseForest :: Tree.Forest RoutePiece -> Tree.Forest RoutePiece
-collapseForest xs = if length roots < length xs
-  then (\r -> Tree.Node r . collapseForest $ collectSubForests r xs) <$> roots
-  else xs
+collapseForest xs = if length roots < length xs then buildNewSubTree <$> roots else xs
   where
-    roots                  = L.nub . fmap Tree.rootLabel $ xs
-    collectSubForests root = foldMap Tree.subForest . filter ((== root) . Tree.rootLabel)
+    roots                  = 
+      L.nub $ Tree.rootLabel <$> xs
 
-alternate :: Int -> String
-alternate n = "\n" <> replicate n ' ' <> " :<|> "
+    buildNewSubTree r = Tree.Node r 
+      . collapseForest 
+      $ collectSubForests r xs
 
-combine :: String
-combine = " :> "
+    collectSubForests root = 
+      foldMap (\t -> if Tree.rootLabel t == root then Tree.subForest t else mempty)
 
-treeToString :: Int -> Tree.Tree RoutePiece -> String
-treeToString _   (Tree.Node root [])       =
-  -- "GET '[Json] ()"
+treeToString :: Int -> Tree.Tree RoutePiece -> Text
+treeToString _   (Tree.Node root [])       = -- "GET '[Json] ()"
   ppRP root
-treeToString lvl (Tree.Node root [child])  =
-  -- "a" :> "b"
+treeToString lvl (Tree.Node root [child])  = -- "a" :> "b"
   ppRP root <> combine <> treeToString (lvl + 2) child
-treeToString lvl (Tree.Node root children) =
-  -- "a" :> ("b" :<|> "c" :<|> "d")
-  ppRP root <> combine <> " (" <> spaces <> L.drop indent childRoutes <> spaces <> ")"
+treeToString lvl (Tree.Node root children) = -- "a" :> ("b" :<|> "c" :<|> "d")
+  ppRP root <> combine <> " (" <> spaces <> T.drop indent childRoutes <> spaces <> ")"
   where
-    lvl' = lvl + 2
+    lvl'        = lvl + 2
     childRoutes = forestToString lvl' children
-    indent = length (alternate lvl')
-    spaces = '\n':replicate (indent - 7) ' '
+    indent      = T.length (alternate lvl')
+    spaces      = cons '\n' $ T.replicate (indent - 1) " "
 
-forestToString :: Int -> [Tree RoutePiece] -> String
-forestToString lvl = foldMap (mappend (alternate lvl) . treeToString lvl )
+forestToString :: Int -> [Tree RoutePiece] -> Text
+forestToString lvl = foldMap (mappend (alternate lvl) . treeToString lvl)
 
-createServantRoutes :: Tree.Forest RoutePiece -> String
-createServantRoutes = (<> "\n") . mappend "root " . forestToString 2
+createServantRoutes :: Tree.Forest RoutePiece -> Text
+createServantRoutes = (<> "\n") . mappend "type WebDriverApi = \"wd\" " . forestToString 2
 
-wretched :: IO (Tree.Forest RoutePiece)
-wretched = do
-  Right r <- parseWebdriverJSON "protocol/webdriver.json"
-  pure $ collapseForest (createForest r)
-
-goDo :: IO ()
-goDo = do
-  Right r <- parseWebdriverJSON "protocol/webdriver.json"
-  let mooshedForest = collapseForest (createForest r)
-  putStr . Tree.drawForest $ (fmap . fmap) ppRP mooshedForest
-
-mkRoutePathTree :: Route -> [[RoutePiece]]
-mkRoutePathTree r = snoc (transformPath r) <$> mkMths (_routeMethods r)
-  where mkMths  = fmap (\m -> MethodTail (_routeMethod m) (_routeResp m))
-
-decodeBodyParam :: Monad f => Decoder f BodyParam
-decodeBodyParam = BodyParam
-  <$> D.atKey "name" D.text
-  <*> D.atKey "type" decodeTypeish
-  <*> D.atKey "description" D.text
-  <*> D.atKey "required" D.bool
-
-decodeResp :: Monad f => Decoder f Resp
-decodeResp = Resp
-  <$> D.atKey "type" decodeTypeish
-  <*> D.atKey "name" D.text
-  <*> D.atKey "description" D.text
-
-decodeMethod :: Monad f => Decoder f Method
-decodeMethod = (\i -> maybe (throwing _ConversionFailure i) pure . m . T.toUpper $ i) =<< D.text
+createRequestTypes :: Tree.Forest RoutePiece -> Text
+createRequestTypes = foldMap (foldMap onlyReqBody)
   where
-    m "POST"   = Just POST
-    m "DELETE" = Just DELETE
-    m "GET"    = Just GET
-    m _        = Nothing
+    toRecord c ps =
+      let
+        n = ucFirst c
 
-decodeTypeish :: Monad f => Decoder f Typeish
-decodeTypeish = (\i -> maybe (throwing _ConversionFailure i) pure . f . T.toLower $ i) =<< D.text
-  where
-    g "object"  = Just Objectly
-    g "string"  = Just Stringly
-    g "number"  = Just Numberly
-    g "null"    = Just Nully
-    g "boolean" = Just Booleanly
-    g "*"       = Just Lol
-    g _         = Nothing
+        fstPrefix = "    _"
+        rstPrefix = "  , _"
 
-    f t' | T.last t' == ']' = Array <$> f (T.take (T.length t' - 2) t')
-         | T.head t' == '(' = Possibly <$> traverse g (T.splitOn "|" (T.init (T.tail t')))
-         | otherwise        = g t'
+        mkField fid typ = c <> fid <>  " :: " <> typ
 
-decodeRouteMethod :: Monad f => Decoder f RouteMethod
-decodeRouteMethod = D.withCursor $ \c -> do
-  m <- D.focus decodeMethod c
-  mobj <- D.moveRight1 c >>= D.down
+        toMaybeType t | T.any (== ' ') t = "Maybe (" <> t <> ")"
+                      | otherwise        = "Maybe " <> t
 
-  RouteMethod m
-    <$> D.fromKey "command" D.text mobj
-    <*> D.fromKey "description" D.text mobj
-    <*> D.fromKey "ref" D.text mobj
-    <*> D.fromKey "parameters" (D.list decodeBodyParam) mobj
-    <*> D.try (D.fromKey "returns" decodeResp mobj)
+        mkType p = (if _bodyParamReqd p then id else toMaybeType)
+          $ typeishToHask (_bodyParamType p)
 
-decodeRoute :: Monad f => Decoder f Route
-decodeRoute = D.withCursor $ \c -> do
-  rawpath <- D.focus D.text c
-  methodCurs <- D.moveRight1 c >>= D.down
+        toField p = mkField (ucFirst $ _bodyParamName p) (mkType p)
 
-  Route rawpath (getpathparams rawpath) <$> D.foldCursor snoc
-    (D.moveRightN (Nat.successor' (Nat.successor' Nat.zero')))
-    mempty
-    decodeRouteMethod
-    methodCurs
+        typetype = if length ps == 1
+          then "newtype "
+          else "data "
 
-  where
-    getpathparams = fmap PathParam
-      . filter (\p -> not (T.null p) && T.isPrefixOf ":" p )
-      . T.splitOn "/"
+        recHeader = typetype <> n <> " = " <> n <> " {\n"
 
-decodeRoutes :: Monad f => Decoder f (NonEmpty Route)
-decodeRoutes = D.withCursor $ D.down >=> \c ->
-  (:|) <$> D.focus decodeRoute c <*> (step c >>= D.foldCursor snoc step mempty decodeRoute)
-  where step = D.moveRightN (Nat.successor' (Nat.successor' Nat.zero'))
+        pfx i | i == 0    = fstPrefix
+              | otherwise = rstPrefix
+      in
+        recHeader <> ifoldMap (\i f -> pfx i <> toField f <> "\n") ps <> "  }\n"
+
+    onlyReqBody (ReqBody c p) = toRecord c p
+    onlyReqBody _             = mempty
 
 parseWebdriverJSON :: MonadIO m => FilePath -> m (Either (DecodeError, CursorHistory) (NonEmpty Route))
-parseWebdriverJSON = D.runDecode decodeRoutes (D.parseWith BS.parseOnly W.parseWaargonaut)
-  . D.mkCursor <=< liftIO . BS.readFile
+parseWebdriverJSON = liftIO . BS.readFile >=> D.decodeFromByteString BS.parseOnly decodeRoutes
+
+parseOrDie :: MonadIO m => FilePath -> m (NonEmpty Route)
+parseOrDie = parseWebdriverJSON >=> either handleErr return
+  where handleErr (e, h) = liftIO $
+          putStr (show $ D.ppCursorHistory h) *>
+          error (show e)
