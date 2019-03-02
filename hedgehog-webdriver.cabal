@@ -17,6 +17,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Hedgehog.WebDriver
+                     , Protocol.Webdriver.Types
+                     , Protocol.Webdriver.Decoders
                      , Protocol.Webdriver.Generate
 
   -- other-modules:
@@ -25,7 +27,7 @@ library
                      , webdriver
                      , hedgehog
                      , text
-                     , waargonaut
+                     , waargonaut >= 0.6 && < 0.7
                      , natural
                      , lens
                      , mtl

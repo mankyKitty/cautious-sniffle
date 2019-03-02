@@ -55,33 +55,35 @@ ppRP (MethodTail m mr)      = methodText m <> " " <> maybe emptyType hasType mr
     emptyType   = "'[] ()"
     hasType res = "'[WaargJSON WD] " <> typeishToHask (_respType res)
 
+transformPath :: Route -> [RoutePiece]
+transformPath = fmap mkPiece . filter (not . T.null) . T.splitOn "/" . _routeRaw
+  where mkPiece p | T.isPrefixOf ":" p = Param . PathParam . T.tail $ p
+                  | otherwise          = Simple p
+
 createForest :: NonEmpty Route -> Tree.Forest RoutePiece
 createForest = collapseForest . Tree.unfoldForest f . foldMap mkRoutePathTree
   where
-    transformPath :: Route -> [RoutePiece]
-    transformPath = fmap mkPiece . filter (not . T.null) . T.splitOn "/" . _routeRaw
-      where mkPiece p | T.isPrefixOf ":" p = Param . PathParam . T.tail $ p
-                      | otherwise          = Simple p
-
-    mkRoutePathTree r = mappend (transformPath r) . mkMethod <$> _routeMethods r
-
-    mkMethod m = maybe mthd (:mthd) $ mkReqBody m where 
-      mthd = [MethodTail (_routeMethod m) (_routeResp m)]
-
-    mkReqBody m
-      | null (_routeBody m) = Nothing
-      | otherwise           = Just $ ReqBody (_routeCommand m) (_routeBody m)
-
     -- NER NER NONEMPTY LIST FOOL!
     f []    = error "the impossible happened (narrator: or did it?)"
     f [a]   = (a, [])
     f (a:t) = (a, [t])
 
+    mkRoutePathTree :: Route -> [[RoutePiece]]
+    mkRoutePathTree r = mappend (transformPath r) . mkMethod <$> _routeMethods r
+
+    mkMethod :: RouteMethod -> [RoutePiece]
+    mkMethod m = maybe mthd (:mthd) $ mkReqBody m where 
+      mthd = [MethodTail (_routeMethod m) (_routeResp m)]
+
+    mkReqBody :: RouteMethod -> Maybe RoutePiece
+    mkReqBody m
+      | null (_routeBody m) = Nothing
+      | otherwise           = Just $ ReqBody (_routeCommand m) (_routeBody m)
+
 collapseForest :: Tree.Forest RoutePiece -> Tree.Forest RoutePiece
 collapseForest xs = if length roots < length xs then buildNewSubTree <$> roots else xs
   where
-    roots                  = 
-      L.nub $ Tree.rootLabel <$> xs
+    roots = L.nub $ Tree.rootLabel <$> xs
 
     buildNewSubTree r = Tree.Node r 
       . collapseForest 

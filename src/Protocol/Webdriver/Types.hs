@@ -41,13 +41,14 @@ data Typeish
   deriving (Show, Eq, Ord)
 
 typeishToHask :: Typeish -> Text
+-- I guess?
 typeishToHask Objectly = "Json"
 typeishToHask LOL      = "Json"
 typeishToHask (Possibly _) = "Json"
-
+-- sigh...
 typeishToHask Nully    = "()"
 typeishToHask Undefined = "()"
-
+-- woo
 typeishToHask Stringly = "Text"
 typeishToHask Numberly = "Scientific"
 typeishToHask Booleanly = "Bool"
