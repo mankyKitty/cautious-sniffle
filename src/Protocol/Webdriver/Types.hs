@@ -24,9 +24,9 @@ data Method
   deriving (Show, Eq, Ord)
 
 methodText :: Method -> Text
-methodText GET    = "GET"
-methodText POST   = "POST"
-methodText DELETE = "DELETE"
+methodText GET    = "Get"
+methodText POST   = "Post"
+methodText DELETE = "Delete"
 
 data Typeish
   = Objectly
@@ -52,7 +52,7 @@ typeishToHask Undefined = "()"
 typeishToHask Stringly = "Text"
 typeishToHask Numberly = "Scientific"
 typeishToHask Booleanly = "Bool"
-typeishToHask (Array t) = "Vector " <> typeishToHask t
+typeishToHask (Array t) = "(Vector " <> typeishToHask t <> ")"
 
 newtype PathParam = PathParam Text
   deriving (Show, Eq, Ord)
@@ -92,6 +92,6 @@ data Route = Route
 data RoutePiece
   = Simple Text
   | Param PathParam
-  | MethodTail Method (Maybe Resp)
+  | MethodTail Text Method (Maybe Resp)
   | ReqBody Text [BodyParam]
   deriving (Show, Eq, Ord)

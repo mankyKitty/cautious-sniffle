@@ -1,6 +1,14 @@
 { nixpkgs ? import ./nix/nixpkgs.nix
 }:
 let
+  sources = {
+    waargonaut         = import ./nix/waargonaut.nix;
+    servant-waargonaut = import ./nix/servant-waargonaut.nix;
+  };
+
+  waarg-overlay         = import "${sources.waargonaut}/waargonaut-deps.nix";
+  servant-waarg-overlay = import "${sources.servant-waargonaut}/servant-waargonaut-deps.nix";
+
   overlay = self: super: {
     haskellPackages = super.haskellPackages.override (old: {
       overrides = self.lib.composeExtensions (old.overrides or (_: _: {})) (hself: hsuper: {
@@ -9,14 +17,18 @@ let
         # Any overrides or snowflake packages can be placed here
         # webdriver = hself.callCabal2nix "webdriver" (import ./nix/swamp-webdriver.nix) {};
         # webdriver = hself.callPackage (import ../hs-webdriver) {};
-        waargonaut = hself.callPackage (import ./nix/waargonaut.nix) {};
+        servant-client      = hself.callHackage "servant-client" "0.14" {};
+        servant-client-core = hself.callHackage "servant-client-core" "0.14.1" {};
+
+        waargonaut         = hself.callPackage sources.waargonaut {};
+        servant-waargonaut = hself.callCabal2nix "servant-waargonaut" sources.servant-waargonaut {};
       });
     });
   };
 
   pkgs = import nixpkgs {
     # Yay, overlays!
-    overlays = [overlay];
+    overlays = [waarg-overlay servant-waarg-overlay overlay];
   };
 
   drv = pkgs.haskellPackages.callPackage ./hedgehog-webdriver.nix {};
