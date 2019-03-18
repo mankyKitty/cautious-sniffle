@@ -1,6 +1,7 @@
 { mkDerivation, attoparsec, base, bytestring, containers, directory
-, hedgehog, http-client, lens, mtl, natural, scientific
-, servant-client, servant-waargonaut, stdenv, text, vector
+, distributive, haskell-src-exts, hedgehog, http-client, lens, mtl
+, natural, pretty, scientific, servant, servant-client
+, servant-waargonaut, stdenv, template-haskell, text, vector
 , waargonaut, webdriver
 }:
 mkDerivation {
@@ -10,8 +11,9 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    attoparsec base bytestring containers hedgehog http-client lens mtl
-    natural scientific servant-client servant-waargonaut text vector
+    attoparsec base bytestring containers distributive haskell-src-exts
+    hedgehog http-client lens mtl natural pretty scientific servant
+    servant-client servant-waargonaut template-haskell text vector
     waargonaut webdriver
   ];
   executableHaskellDepends = [

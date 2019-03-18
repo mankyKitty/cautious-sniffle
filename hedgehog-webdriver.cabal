@@ -34,7 +34,6 @@ library wd-api
                      , scientific
                      , servant
                      , servant-client >= 0.14
-                     , hedgehog-webdriver
 
   hs-source-dirs:      out
   ghc-options:         -Wall
@@ -44,7 +43,13 @@ library wd-api
 library
   exposed-modules:     Hedgehog.WebDriver
                      , Protocol.Webdriver.Types
+                     , Protocol.Webdriver.HaskGen
+
                      , Protocol.Webdriver.Decoders
+
+                     , Protocol.Webdriver.Generate.Hask
+                     , Protocol.Webdriver.Generate.Streengs
+                     , Protocol.Webdriver.Generate.Internal
                      , Protocol.Webdriver.Generate
 
   -- other-modules:
@@ -61,6 +66,10 @@ library
                      , bytestring
                      , attoparsec
                      , containers
+                     , distributive
+                     , haskell-src-exts
+                     , template-haskell >= 2.13
+                     , pretty
 
   hs-source-dirs:      src
   ghc-options:         -Wall
