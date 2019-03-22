@@ -40,6 +40,31 @@ library wd-api
 
   default-language:    Haskell2010
 
+executable test-wd-api
+  other-modules:       Protocol.Webdriver.ClientAPI
+                     , Protocol.Webdriver.ClientAPI.Types
+
+  main-is:             Main.hs
+  build-depends:       base >=4.11 && <4.12
+                     , text
+                     , waargonaut >= 0.6 && < 0.7
+                     , servant-waargonaut
+                     , lens
+                     , mtl
+                     , text
+                     , bytestring
+                     , containers
+                     , vector
+                     , http-client
+                     , scientific
+                     , servant
+                     , servant-client >= 0.14
+                     , wd-api
+  hs-source-dirs:      out                    
+  ghc-options:         -Wall
+
+  default-language:    Haskell2010
+
 library
   exposed-modules:     Hedgehog.WebDriver
                      , Protocol.Webdriver.Types

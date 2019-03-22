@@ -35,6 +35,7 @@ import           Waargonaut.Decode.Error              (DecodeError)
 import           Protocol.Webdriver.Decoders          (decodeRoutes)
 import           Protocol.Webdriver.Types
 
+import qualified Text.PrettyPrint as PP
 import qualified Language.Haskell.Exts                as HS
 import qualified Protocol.Webdriver.Generate.Hask     as HGen
 import           Protocol.Webdriver.Generate.Internal (onlyMT)
@@ -59,7 +60,7 @@ flattenRoute r = do
   pure $ (rhead <>) <$> rtails
 
 flattenRoutes :: NonEmpty Route -> Maybe (NonEmpty (NonEmpty RoutePiece))
-flattenRoutes = foldMap flattenRoute
+flattenRoutes = fmap NE.sort <$> foldMap flattenRoute
 
 createForest :: NonEmpty Route -> Tree.Forest RoutePiece
 createForest = collapseForest . Tree.unfoldForest f . foldMap mkRoutePathTree
@@ -82,7 +83,7 @@ collapseForest xs = if length roots < length xs then buildNewSubTree <$> roots e
     collectSubForests root sf = flip foldMap sf $ \t ->
       if Tree.rootLabel t == root then Tree.subForest t else mempty
 
-createClientFunctions :: Tree.Forest RoutePiece -> [Text]
+createClientFunctions :: (Foldable t, Foldable f) => f (t RoutePiece) -> [Text]
 createClientFunctions = fmap (onlyMT id mempty)
   . filter (onlyMT (const True) False)
   . foldMap toList
@@ -106,22 +107,15 @@ createFiles inpFile destDir = liftIO $ do
   let rsf = createForest rs
 
   routes <- maybe (error "Dodgy route input") pure $ flattenRoutes rs
-  fns <- maybe (error "Dodgy function list") pure . NE.nonEmpty $ createClientFunctions rsf
+  fns <- maybe (error "Dodgy function list") pure . NE.nonEmpty $ createClientFunctions routes
 
   let
-    apiMod = HGen.apiModule (HGen.createServantAPIType routes) fns []
+    apidoc = HGen.apiDoc routes fns
     typeMod = HGen.typesModule rsf
 
     pphask = T.pack . HS.prettyPrintStyleMode
       (HS.Style HS.PageMode 100 2.0)
       (HS.PPHsMode 2 2 2 2 2 2 1 True HS.PPOffsideRule False)
 
-  TIO.writeFile (destDir <> "/" <> apiFilename) (pphask apiMod)
+  TIO.writeFile (destDir <> "/" <> apiFilename) (T.pack $ PP.render apidoc)
   TIO.writeFile (destDir <> "/ClientAPI/" <> typesFilename) (pphask typeMod)
-
-  --   api = fold $ flattenedToString <$> flattenRoutes rs
-  --   fns = createClientFunctions rsf
-  --   types = createRequestTypes rsf
-
-  -- TIO.writeFile (destDir <> "/" <> apiFilename) (apiModule api fns)
-  -- TIO.writeFile (destDir <> "/ClientAPI/" <> typesFilename) (typesModule types)

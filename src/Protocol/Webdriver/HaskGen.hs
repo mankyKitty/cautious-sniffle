@@ -92,11 +92,8 @@ mkModuleHead
   -> Maybe (HS.WarningText ())
   -> [String]
   -> HS.ModuleHead ()
-mkModuleHead m warning exports = HS.ModuleHead ()
-  (moduleName m)
-  warning
-  exps
-  where exps = mkExports <$> hasSome exports
+mkModuleHead m warning = 
+  HS.ModuleHead () (moduleName m) warning . fmap mkExports . hasSome 
 
 mkWholeModule
   :: String
@@ -106,13 +103,12 @@ mkWholeModule
   -> [HS.ImportDecl ()]
   -> [HS.Decl ()]
   -> HS.Module ()
-mkWholeModule m warning exports pragmas = HS.Module ()
-  (pure (mkModuleHead m warning exports)) pragmas
+mkWholeModule m warning exports = HS.Module ()
+  (pure $ mkModuleHead m warning exports) 
 
 -- deriving (Show, Eq, GHC.Generic)
--- Deriving l (Maybe (DerivStrategy ()) [InstRule l]
 mkDeriving :: [HS.QName ()] -> HS.Deriving ()
-mkDeriving tc = HS.Deriving () Nothing mkHead -- [HS.IRule () Nothing Nothing mkHead]
+mkDeriving tc = HS.Deriving () Nothing mkHead
   where mkHead = HS.IRule () Nothing Nothing . HS.IHCon () <$> tc
 
 -- instance HasDatatypeInfo X

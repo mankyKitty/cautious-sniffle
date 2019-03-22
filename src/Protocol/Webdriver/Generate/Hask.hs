@@ -1,8 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE TupleSections             #-}
 module Protocol.Webdriver.Generate.Hask
   ( createRequestTypeDecls
   , createClientAPIFunctions
+  , createClientAPIFunctionsDoc
   , createServantAPIType
   , createApiProxy
   , rpToHask
@@ -11,8 +13,11 @@ module Protocol.Webdriver.Generate.Hask
   , vecEncInstance
   , vecDecInstance
   , jsonInstance
+  , createServantAPIDoc
+  , apiDoc
   ) where
 
+import           Control.Lens                           (over, (^?), _last)
 import           Data.Distributive                      (distribute)
 
 import qualified Data.Tree                              as Tree
@@ -20,10 +25,14 @@ import qualified Data.Tree                              as Tree
 import           Data.Text                              (Text)
 import qualified Data.Text                              as T
 
+import qualified Data.List as L
 import           Data.List.NonEmpty                     (NonEmpty (..))
 
 import           Data.Foldable                          (foldr1, toList)
 import           Protocol.Webdriver.Types
+
+import           Text.PrettyPrint                       (Doc)
+import qualified Text.PrettyPrint                       as PP
 
 import qualified Language.Haskell.Exts                  as HS
 import qualified Language.Haskell.TH.LanguageExtensions as HSLE
@@ -93,9 +102,50 @@ rpath = mkInfixTyOp (HS.UnQual () $ HS.sym apiContained)
 ralt :: HS.Type () -> HS.Type () -> HS.Type()
 ralt = mkInfixTyOp alternateSymbol
 
+ppNewline :: Doc
+ppNewline = PP.text "\n"
+
+createServantAPIDoc :: NonEmpty (NonEmpty RoutePiece) -> Doc
+createServantAPIDoc xs =
+  let
+    pline = HS.prettyPrintStyleMode (PP.style { PP.mode = PP.OneLineMode }) HS.defaultMode
+    apilines = fmap (HS.TyParen () . foldr1 rpath . fmap rpToHask) xs
+    thead = PP.text $ "type " <> apiTypeName <> " = "
+    leadsym = PP.text $ "  " <> apiUnion <> " "
+
+    todoc (h :| t) =
+      PP.text "       " <> PP.text (pline h)
+      : fmap (mappend leadsym . PP.text . pline) t
+
+  in
+    PP.vcat $ thead : todoc apilines
+
+createClientAPIFunctionsDoc :: NonEmpty Text -> Doc
+createClientAPIFunctionsDoc (a :| xs) =
+  let
+    un = 
+      PP.space <> PP.text apiUnion <> PP.space
+
+    fn = 
+      PP.text . T.unpack
+
+    mkLast l = 
+      un <> fn l <> PP.space <> PP.text " = client " <> PP.text apiProxyName
+
+    lastFn = 
+      PP.space <> maybe PP.empty mkLast (xs ^? _last)
+
+    fns = 
+      PP.vcat . over _last (<> lastFn) $ mappend un . fn <$> init xs
+  in
+    PP.vcat
+      [ fn a
+      , PP.nest 2 fns
+      ]
+
 createServantAPIType :: NonEmpty (NonEmpty RoutePiece) -> HS.Decl ()
 createServantAPIType = HS.TypeDecl () (HS.DHead () $ HS.name apiTypeName)
-  . foldr1 ralt . fmap (foldr1 rpath . fmap rpToHask)
+  . foldr1 ralt . fmap (HS.TyParen () . foldr1 rpath . fmap rpToHask)
 
 createClientAPIFunctions :: NonEmpty Text -> HS.Decl ()
 createClientAPIFunctions (a :| xs) = HS.FunBind () . pure $ HS.InfixMatch ()
@@ -174,31 +224,46 @@ vectorTypeImport = HGen.mkImportDecl "Data.Vector" [HGen.importOnly "Vector"]
 jsonTypeImport :: HS.ImportDecl ()
 jsonTypeImport = HGen.mkImportDecl "Waargonaut.Types.Json" [HGen.importOnly "Json"]
 
+apiModuleImports :: [HS.ImportDecl ()]
+apiModuleImports =
+  [ HGen.mkImportDecl "Data.Proxy" [HGen.importAllOf "Proxy"]
+  , textTypeImport
+  , vectorTypeImport
+  , jsonTypeImport
+  , HGen.importEntire "Servant.API"
+  , HGen.importEntire "Servant.Client"
+  , HGen.mkImportDecl "Servant.API.ContentTypes.Waargonaut" [HGen.importOnly "WaargJSON"]
+  , HGen.importEntire "Protocol.Webdriver.ClientAPI.Types"
+  ]
+
+apiDoc :: NonEmpty (NonEmpty RoutePiece) -> NonEmpty Text -> Doc
+apiDoc api fns =
+  let
+    rr = PP.text . HS.prettyPrint
+    rrs = PP.vcat . fmap rr
+  in
+    PP.vcat $ L.intersperse ppNewline
+      [ rrs $ HGen.mkPragmas [HSLE.DataKinds, HSLE.TypeOperators]
+      , rr $ HS.OptionsPragma () (Just HS.GHC) "-Wno-missing-signatures"
+      , rr $ HGen.mkModuleHead "Protocol.Webdriver.ClientAPI" Nothing (toList $ T.unpack <$> fns)
+      , rrs apiModuleImports
+      , createServantAPIDoc api
+      , rrs createApiProxy
+      , createClientAPIFunctionsDoc fns
+      ]
+
 apiModule :: HS.Decl () -> NonEmpty Text -> [HS.Decl ()] -> HS.Module ()
 apiModule api fns decls = HGen.mkWholeModule "Protocol.Webdriver.ClientAPI" Nothing
   (toList $ T.unpack <$> fns)
-  ( [ HS.OptionsPragma () (Just HS.GHC) "-Wno-missing-signatures"]
-    <> HGen.mkPragmas [ HSLE.DataKinds
-                      , HSLE.TypeOperators
-                      ]
+  ( [HS.OptionsPragma () (Just HS.GHC) "-Wno-missing-signatures"] <>
+    HGen.mkPragmas [HSLE.DataKinds, HSLE.TypeOperators]
   )
-  imports
+  apiModuleImports
   ( api
     : createApiProxy
     <> [createClientAPIFunctions fns]
     <> decls
   )
-  where
-    imports =
-      [ HGen.mkImportDecl "Data.Proxy" [HGen.importAllOf "Proxy"]
-      , textTypeImport
-      , vectorTypeImport
-      , jsonTypeImport
-      , HGen.importEntire "Servant.API"
-      , HGen.importEntire "Servant.Client"
-      , HGen.mkImportDecl "Servant.API.ContentTypes.Waargonaut" [HGen.importOnly "WaargJSON"]
-      , HGen.importEntire "Protocol.Webdriver.ClientAPI.Types"
-      ]
 
 typesModule :: Tree.Forest RoutePiece -> HS.Module ()
 typesModule inp = HGen.mkWholeModule "Protocol.Webdriver.ClientAPI.Types" Nothing []
