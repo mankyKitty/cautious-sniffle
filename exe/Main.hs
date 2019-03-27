@@ -4,7 +4,7 @@ import System.Directory (createDirectoryIfMissing)
 
 import Protocol.Webdriver.Generate (createFiles)
 
-outRoot = "out/Protocol/Webdriver"
+outRoot = "generated/Protocol/Webdriver"
 outTree = outRoot <> "/ClientAPI"
 
 main :: IO ()

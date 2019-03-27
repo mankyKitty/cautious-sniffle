@@ -1,90 +1,55 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings     #-}
 module Protocol.Webdriver.ClientAPI.Types where
-import qualified GHC.Generics as GHC
-import Data.Text (Text)
-import Data.Vector (Vector)
-import qualified Data.Vector as V
-import Data.Bool (Bool)
-import Data.Scientific (Scientific)
-import Waargonaut.Types.Json (Json)
-import qualified Waargonaut.Encode as E
-import qualified Waargonaut.Decode as D
-import Waargonaut.Generic
-       (Tagged(..), Generic, HasDatatypeInfo,
-        JsonDecode(..), JsonEncode(..))
 
-data WDJson
+import           Data.Bool                                   (Bool)
+import           Data.Functor.Contravariant                  ((>$<))
+import           Data.Scientific                             (Scientific)
+import           Data.Text                                   (Text)
+import           Data.Vector                                 (Vector)
+import qualified GHC.Generics                                as GHC
+import qualified Waargonaut.Encode                           as E
+import           Waargonaut.Generic                          (Generic,
+                                                              HasDatatypeInfo,
+                                                              JsonDecode (..),
+                                                              JsonEncode (..),
+                                                              Tagged (..))
+import           Waargonaut.Types.Json                       (Json)
 
-instance JsonEncode WDJson a =>
-         JsonEncode WDJson (Vector a)
-         where
-  mkEncoder = (\ e -> E.traversable e) <$> mkEncoder
+import           Protocol.Webdriver.ClientAPI.Types.Internal (WDJson)
 
-instance JsonDecode WDJson a =>
-         JsonDecode WDJson (Vector a)
-         where
-  mkDecoder
-   = (\ d ->
-       D.withCursor (D.rightwardSnoc V.empty d))
-      <$> mkDecoder
-
-instance JsonDecode WDJson Json where
-  mkDecoder = Tagged D.json
-
-instance JsonEncode WDJson Json where
-  mkEncoder = Tagged E.json
-
-newtype NewSession = NewSession{_unNewSession ::
-                                Json}
-                     deriving (Show, Eq, GHC.Generic)
-
-instance HasDatatypeInfo NewSession
-
-instance Generic NewSession
-
-instance JsonEncode WDJson NewSession
-
-instance JsonDecode WDJson NewSession
-
-data SetTimeouts = SetTimeouts{_setTimeoutsImplicit
-                               :: Maybe Scientific,
-                               _setTimeoutsPageLoad :: Maybe Scientific,
-                               _setTimeoutsScript :: Maybe Scientific}
-                   deriving (Show, Eq, GHC.Generic)
+data SetTimeouts = SetTimeouts
+  { _setTimeoutsImplicit :: Maybe Scientific
+  , _setTimeoutsPageLoad :: Maybe Scientific
+  , _setTimeoutsScript   :: Maybe Scientific
+  }
+  deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo SetTimeouts
-
 instance Generic SetTimeouts
-
 instance JsonEncode WDJson SetTimeouts
-
 instance JsonDecode WDJson SetTimeouts
 
-newtype NavigateTo = NavigateTo{_unNavigateTo ::
-                                Text}
-                     deriving (Show, Eq, GHC.Generic)
+newtype NavigateTo = NavigateTo
+  { _unNavigateTo :: Text
+  }
+  deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo NavigateTo
-
 instance Generic NavigateTo
-
-instance JsonEncode WDJson NavigateTo
-
-instance JsonDecode WDJson NavigateTo
+instance JsonEncode WDJson NavigateTo where
+  mkEncoder = Tagged (E.mapLikeObj $ E.atKey' "url" (_unNavigateTo >$< E.text))
 
 newtype SwitchToWindow = SwitchToWindow{_unSwitchToWindow
                                         :: Text}
                          deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo SwitchToWindow
-
 instance Generic SwitchToWindow
-
 instance JsonEncode WDJson SwitchToWindow
-
 instance JsonDecode WDJson SwitchToWindow
 
 newtype CreateWindow = CreateWindow{_unCreateWindow
@@ -92,26 +57,21 @@ newtype CreateWindow = CreateWindow{_unCreateWindow
                        deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo CreateWindow
-
 instance Generic CreateWindow
-
 instance JsonEncode WDJson CreateWindow
-
 instance JsonDecode WDJson CreateWindow
 
-data SetWindowRect = SetWindowRect{_setWindowRectX
-                                   :: (Maybe Scientific),
-                                   _setWindowRectY :: (Maybe Scientific),
-                                   _setWindowRectWidth :: (Maybe Scientific),
-                                   _setWindowRectHeight :: (Maybe Scientific)}
-                     deriving (Show, Eq, GHC.Generic)
+data SetWindowRect = SetWindowRect
+  { _setWindowRectX      :: (Maybe Scientific),
+    _setWindowRectY      :: (Maybe Scientific),
+    _setWindowRectWidth  :: (Maybe Scientific),
+    _setWindowRectHeight :: (Maybe Scientific)
+  }
+  deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo SetWindowRect
-
 instance Generic SetWindowRect
-
 instance JsonEncode WDJson SetWindowRect
-
 instance JsonDecode WDJson SetWindowRect
 
 newtype SwitchToFrame = SwitchToFrame{_unSwitchToFrame
@@ -165,22 +125,23 @@ instance JsonEncode WDJson FindElementsFromElement
 
 instance JsonDecode WDJson FindElementsFromElement
 
-data ElementSendKeys = ElementSendKeys{_elementSendKeysText
-                                       :: Text,
-                                       _elementSendKeysValue :: Maybe (Vector Text)}
-                       deriving (Show, Eq, GHC.Generic)
+newtype ElementSendKeys = ElementSendKeys
+  { _elementSendKeysValue :: Text
+  }
+  deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo ElementSendKeys
-
 instance Generic ElementSendKeys
 
-instance JsonEncode WDJson ElementSendKeys
+instance JsonEncode WDJson ElementSendKeys where
+  mkEncoder = Tagged $ E.mapLikeObj $ \esk ->
+    E.atKey' "value" (E.list E.text) [_elementSendKeysValue esk] .
+    E.atKey' "text" E.text (_elementSendKeysValue esk)
 
-instance JsonDecode WDJson ElementSendKeys
-
-newtype TakeElementScreenshot = TakeElementScreenshot{_unTakeElementScreenshot
-                                                      :: Maybe Bool}
-                                deriving (Show, Eq, GHC.Generic)
+newtype TakeElementScreenshot = TakeElementScreenshot
+  { _unTakeElementScreenshot :: Maybe Bool
+  }
+  deriving (Show, Eq, GHC.Generic)
 
 instance HasDatatypeInfo TakeElementScreenshot
 

@@ -1,8 +1,9 @@
-{ mkDerivation, attoparsec, base, bytestring, containers, directory
-, distributive, haskell-src-exts, hedgehog, http-client, lens, mtl
-, natural, pretty, scientific, servant, servant-client
-, servant-waargonaut, stdenv, template-haskell, text, vector
-, waargonaut, webdriver
+{ mkDerivation, attoparsec, base, bytestring, containers
+, contravariant, dependent-map, dependent-sum
+, dependent-sum-template, directory, distributive, haskell-src-exts
+, hedgehog, http-client, lens, mtl, natural, pretty, scientific
+, semigroupoids, servant, servant-client, servant-waargonaut
+, stdenv, template-haskell, text, vector, waargonaut, webdriver
 }:
 mkDerivation {
   pname = "hedgehog-webdriver";
@@ -11,15 +12,19 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    attoparsec base bytestring containers distributive haskell-src-exts
-    hedgehog http-client lens mtl natural pretty scientific servant
-    servant-client servant-waargonaut template-haskell text vector
-    waargonaut webdriver
+    attoparsec base bytestring containers contravariant dependent-map
+    dependent-sum dependent-sum-template distributive haskell-src-exts
+    hedgehog http-client lens mtl natural pretty scientific
+    semigroupoids servant servant-client servant-waargonaut
+    template-haskell text vector waargonaut webdriver
   ];
   executableHaskellDepends = [
     base bytestring directory lens text waargonaut
   ];
-  testHaskellDepends = [ base hedgehog webdriver ];
+  testHaskellDepends = [
+    base containers hedgehog http-client lens servant-client text
+    vector waargonaut webdriver
+  ];
   doHaddock = false;
   license = "unknown";
   hydraPlatforms = stdenv.lib.platforms.none;
