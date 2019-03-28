@@ -1,11 +1,15 @@
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TupleSections         #-}
 module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome where
 
-import           Control.Lens                                     (( # ))
+import           Control.Lens                                     (preview,
+                                                                   ( # ), _1)
+import           Control.Monad.Error.Lens                         (throwing)
 import           Data.Functor.Contravariant                       ((>$<))
 
 import           Data.Text                                        (Text)
@@ -14,20 +18,31 @@ import qualified Data.Text                                        as T
 import           Data.Maybe                                       (fromMaybe)
 
 import           Data.Dependent.Map                               (DMap)
+import           Data.Dependent.Sum                               (ShowTag (..), EqTag (..))
 import           Data.Functor.Identity                            (Identity (..))
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
 import           Data.Map                                         (Map)
+import qualified Data.Map                                         as Map
 
 import           Protocol.Webdriver.ClientAPI.Types.Internal      (Base64,
-                                                                   encodeBase64,
+                                                                   decBase64,
+                                                                   decodeDMap,
+                                                                   dmatKey,
+                                                                   encBase64,
                                                                    encodeDMap)
-import           Protocol.Webdriver.ClientAPI.Types.LogSettings   (LogSettings, encodeLogSettings)
-import           Protocol.Webdriver.ClientAPI.Types.ProxySettings (HostPort, encodeHostPort)
+import           Protocol.Webdriver.ClientAPI.Types.LogSettings   (LogSettings, decLogSettings,
+                                                                   encLogSettings)
+import           Protocol.Webdriver.ClientAPI.Types.ProxySettings (HostPort,
+                                                                   decHostPort,
+                                                                   encHostPort)
 
+import qualified Waargonaut.Decode                                as D
+import qualified Waargonaut.Decode.Error                          as DE
 import qualified Waargonaut.Encode                                as E
 
-import           Waargonaut.Types.JObject                         (MapLikeObj, fromMapLikeObj)
+import           Waargonaut.Types.JObject                         (MapLikeObj, fromMapLikeObj,
+                                                                   _MapLikeObj)
 import           Waargonaut.Types.Json                            (Json, _JObj)
 import           Waargonaut.Types.Whitespace                      (WS)
 
@@ -38,26 +53,48 @@ newtype ChromeLocalState = ChromeLocalState
   }
   deriving (Show, Eq)
 
-encodeChromeLocalState :: Applicative f => E.Encoder f ChromeLocalState
-encodeChromeLocalState = ((_JObj #) . (,mempty) . fromMapLikeObj . unChromeLocalState) >$< E.json
+decChromeLocalState :: Monad f => D.Decoder f ChromeLocalState
+decChromeLocalState = D.json >>= handleErr . preview (_JObj . _1 . _MapLikeObj)
+  where
+    handleErr = maybe
+      (throwing DE._ConversionFailure "ChromeLocalState")
+      (pure . ChromeLocalState)
+
+encChromeLocalState :: Applicative f => E.Encoder f ChromeLocalState
+encChromeLocalState = ((_JObj #) . (,mempty) . fromMapLikeObj . unChromeLocalState) >$< E.json
 
 newtype ChromePrefs = ChromePrefs
   { unChromePrefs :: Map Text Text
   }
   deriving (Show, Eq)
 
+decChromePrefs :: Monad f => D.Decoder f ChromePrefs
+decChromePrefs = ChromePrefs . Map.fromList <$> D.objectAsKeyValues D.text D.text
+
+encChromePrefs :: Applicative f => E.Encoder f ChromePrefs
+encChromePrefs = unChromePrefs >$< E.mapToObj E.text id
+
 newtype DebuggerAddr = DebuggerAddr
   { unDebuggerAddr :: HostPort
   }
   deriving (Show, Eq)
+
+decDebuggerAddr :: Monad f => D.Decoder f DebuggerAddr
+decDebuggerAddr = DebuggerAddr <$> decHostPort
+
+encDebuggerAddr :: Applicative f => E.Encoder f DebuggerAddr
+encDebuggerAddr = unDebuggerAddr >$< encHostPort
 
 newtype ExcludeSwitches = ExcludeSwitches
   { unExcludeSwitches :: [Text]
   }
   deriving (Show, Eq)
 
-encodeExcludeSwitches :: Applicative f => E.Encoder f ExcludeSwitches
-encodeExcludeSwitches = fmap (\t -> fromMaybe t $ T.stripPrefix "--" t)
+decExcludeSwitches :: Monad f => D.Decoder f ExcludeSwitches
+decExcludeSwitches = ExcludeSwitches <$> D.list D.text
+
+encExcludeSwitches :: Applicative f => E.Encoder f ExcludeSwitches
+encExcludeSwitches = fmap (\t -> fromMaybe t $ T.stripPrefix "--" t)
   . unExcludeSwitches
   >$< E.list E.text
 
@@ -66,10 +103,19 @@ newtype ChromeExtension = ChromeExtension
   }
   deriving (Show, Eq)
 
+decChromeExtension :: Monad f => D.Decoder f ChromeExtension
+decChromeExtension = ChromeExtension <$> decBase64
+
+encChromeExtension :: Applicative f => E.Encoder f ChromeExtension
+encChromeExtension = unChromeExtension >$< encBase64
+
 newtype ChromeMobileEmu = ChromeMobileEmu
   { unChromeMobileEmu :: Map Text Text
   }
   deriving (Show, Eq)
+
+decChromeMobileEmu :: Monad f => D.Decoder f ChromeMobileEmu
+decChromeMobileEmu = ChromeMobileEmu . Map.fromList <$> D.objectAsKeyValues D.text D.text
 
 newtype WindowTypes = WindowTypes
   { unWindowTypes :: [Text]
@@ -90,23 +136,90 @@ data ChromeCap a where
   ChrPerfLoggingPrefs :: ChromeCap LogSettings
   ChrWindowTypes      :: ChromeCap WindowTypes
 
+type ChromeCaps = DMap ChromeCap Identity
+
+deriving instance Eq a => Eq (ChromeCap a)
+deriving instance Show a => Show (ChromeCap a)
+deriving instance Ord a => Ord (ChromeCap a)
+
 deriveGShow ''ChromeCap
 deriveGEq ''ChromeCap
 deriveGCompare ''ChromeCap
 
-type ChromeCaps = DMap ChromeCap Identity
+instance EqTag ChromeCap Identity where
+  eqTagged ChrArgs ChrArgs                         = (==)
+  eqTagged ChrBinary ChrBinary                     = (==)
+  eqTagged ChrExtensions ChrExtensions             = (==)
+  eqTagged ChrLocalState ChrLocalState             = (==)
+  eqTagged ChrPrefs ChrPrefs                       = (==)
+  eqTagged ChrDetach ChrDetach                     = (==)
+  eqTagged ChrDebuggerAddr ChrDebuggerAddr         = (==)
+  eqTagged ChrExcludeSwitches ChrExcludeSwitches   = (==)
+  eqTagged ChrMinidumpPath ChrMinidumpPath         = (==)
+  eqTagged ChrMobileEmulation ChrMobileEmulation   = (==)
+  eqTagged ChrPerfLoggingPrefs ChrPerfLoggingPrefs = (==)
+  eqTagged ChrWindowTypes ChrWindowTypes           = (==)
+  eqTagged _ _                                     = const (const False)
 
-encodeChromeCaps :: Applicative f => E.Encoder f ChromeCaps
-encodeChromeCaps = encodeDMap $ \case
-  ChrArgs            -> ("args", E.list E.text)
-  ChrBinary          -> ("binary", E.string)
-  ChrExtensions      -> ("extensions", E.list (unChromeExtension >$< encodeBase64))
-  ChrLocalState      -> ("localState", encodeChromeLocalState)
-  ChrPrefs           -> ("prefs", unChromePrefs >$< E.mapToObj E.text id)
-  ChrDetach          -> ("detach", E.bool)
-  ChrDebuggerAddr    -> ("debuggerAddress", unDebuggerAddr >$< encodeHostPort)
-  ChrExcludeSwitches -> ("excludeSwitches", encodeExcludeSwitches)
-  ChrMinidumpPath    -> ("minidumpPath", E.string)
-  ChrMobileEmulation -> ("mobileEmulation", unChromeMobileEmu >$< E.mapToObj E.text id)
-  ChrWindowTypes     -> ("windowTypes", unWindowTypes >$< E.list E.text)
-  ChrPerfLoggingPrefs -> ("perfLoggingPrefs", encodeLogSettings)
+instance ShowTag ChromeCap Identity where
+  showTaggedPrec ChrArgs             = showsPrec
+  showTaggedPrec ChrBinary           = showsPrec
+  showTaggedPrec ChrExtensions       = showsPrec
+  showTaggedPrec ChrLocalState       = showsPrec
+  showTaggedPrec ChrPrefs            = showsPrec
+  showTaggedPrec ChrDetach           = showsPrec
+  showTaggedPrec ChrDebuggerAddr     = showsPrec
+  showTaggedPrec ChrExcludeSwitches  = showsPrec
+  showTaggedPrec ChrMinidumpPath     = showsPrec
+  showTaggedPrec ChrMobileEmulation  = showsPrec
+  showTaggedPrec ChrPerfLoggingPrefs = showsPrec
+  showTaggedPrec ChrWindowTypes      = showsPrec
+
+chromeCapKeys :: ChromeCap a -> Text
+chromeCapKeys ChrArgs             = "args"
+chromeCapKeys ChrBinary           = "binary"
+chromeCapKeys ChrExtensions       = "extensions"
+chromeCapKeys ChrLocalState       = "localState"
+chromeCapKeys ChrPrefs            = "prefs"
+chromeCapKeys ChrDetach           = "detach"
+chromeCapKeys ChrDebuggerAddr     = "debuggerAddress"
+chromeCapKeys ChrExcludeSwitches  = "excludeSwitches"
+chromeCapKeys ChrMinidumpPath     = "minidumpPath"
+chromeCapKeys ChrMobileEmulation  = "mobileEmulation"
+chromeCapKeys ChrWindowTypes      = "windowTypes"
+chromeCapKeys ChrPerfLoggingPrefs = "perfLoggingPrefs"
+
+chromeCapEnc :: Applicative f => ChromeCap a -> E.Encoder f a
+chromeCapEnc ChrArgs             = E.list E.text
+chromeCapEnc ChrBinary           = E.string
+chromeCapEnc ChrExtensions       = E.list encChromeExtension
+chromeCapEnc ChrLocalState       = encChromeLocalState
+chromeCapEnc ChrPrefs            = encChromePrefs
+chromeCapEnc ChrDetach           = E.bool
+chromeCapEnc ChrDebuggerAddr     = encDebuggerAddr
+chromeCapEnc ChrExcludeSwitches  = encExcludeSwitches
+chromeCapEnc ChrMinidumpPath     = E.string
+chromeCapEnc ChrMobileEmulation  = unChromeMobileEmu >$< E.mapToObj E.text id
+chromeCapEnc ChrWindowTypes      = unWindowTypes >$< E.list E.text
+chromeCapEnc ChrPerfLoggingPrefs = encLogSettings
+
+decChromeCaps :: Monad f => D.Decoder f ChromeCaps
+decChromeCaps = decodeDMap
+  [ atDM ChrArgs (D.list D.text)
+  , atDM ChrBinary D.string
+  , atDM ChrExtensions (D.list decChromeExtension)
+  , atDM ChrLocalState decChromeLocalState
+  , atDM ChrPrefs decChromePrefs
+  , atDM ChrDetach D.bool
+  , atDM ChrDebuggerAddr decDebuggerAddr
+  , atDM ChrExcludeSwitches decExcludeSwitches
+  , atDM ChrMinidumpPath D.string
+  , atDM ChrMobileEmulation decChromeMobileEmu
+  , atDM ChrPerfLoggingPrefs decLogSettings
+  , atDM ChrWindowTypes (WindowTypes <$> D.list D.text)
+  ]
+  where
+    atDM = dmatKey chromeCapKeys
+
+encChromeCaps :: Applicative f => E.Encoder f ChromeCaps
+encChromeCaps = encodeDMap $ \k -> (chromeCapKeys k, chromeCapEnc k)

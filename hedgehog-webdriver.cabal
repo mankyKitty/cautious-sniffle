@@ -19,6 +19,8 @@ library wd-api
   exposed-modules:     Protocol.Webdriver.ClientAPI
                      , Protocol.Webdriver.ClientAPI.Types
                      , Protocol.Webdriver.ClientAPI.Types.Session
+                     , Protocol.Webdriver.ClientAPI.Types.Timeout
+                     , Protocol.Webdriver.ClientAPI.Types.Error
                      , Protocol.Webdriver.ClientAPI.Types.LocationStrategy 
                      , Protocol.Webdriver.ClientAPI.Types.ElementId
                      , Protocol.Webdriver.ClientAPI.Types.Internal
@@ -48,6 +50,9 @@ library wd-api
                      , dependent-sum
                      , dependent-sum-template
                      , contravariant
+                     , base64-bytestring
+                     , clay
+                     , modern-uri
 
   hs-source-dirs:      out
   ghc-options:         -Wall
@@ -107,8 +112,6 @@ executable gen-hs
   ghc-options:         -Wall
 
 test-suite hedgehog-driver
-  -- other-modules:
-  -- other-extensions:
   main-is:             Main.hs
   type:                exitcode-stdio-1.0
   build-depends:       base >=4.11 && <4.12
@@ -125,6 +128,8 @@ test-suite hedgehog-driver
                      , vector
                      , dependent-map
                      , dependent-sum
+                     , clay
+                     , modern-uri
 
   hs-source-dirs:      test
   ghc-options:         -Wall -O2

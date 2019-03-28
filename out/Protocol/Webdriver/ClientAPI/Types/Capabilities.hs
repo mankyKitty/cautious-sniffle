@@ -1,44 +1,81 @@
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TemplateHaskell    #-}
-{-# LANGUAGE TypeApplications   #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeApplications      #-}
 module Protocol.Webdriver.ClientAPI.Types.Capabilities where
 
+import           Control.Monad.Error.Lens                                (throwing)
 import           Data.Functor.Contravariant                              ((>$<))
 import           Data.Text                                               (Text)
-import           GHC.Word                                                (Word32)
 
 import           Data.Dependent.Map                                      (DMap)
 import qualified Data.Dependent.Map                                      as DM
-import           Data.Dependent.Sum                                      ((==>))
+import           Data.Dependent.Sum                                      (EqTag (..),
+                                                                          ShowTag (..),
+                                                                          (==>))
 import           Data.Functor.Identity                                   (Identity (..))
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
+import           Data.Maybe                                              (fromMaybe)
 
+import qualified Waargonaut.Decode                                       as D
+import qualified Waargonaut.Decode.Error                                 as DE
 import qualified Waargonaut.Encode                                       as E
 
-import           Protocol.Webdriver.ClientAPI.Types.Internal             (encodeDMap,
+import           Protocol.Webdriver.ClientAPI.Types.Internal             (decodeDMap,
+                                                                          dmatKey,
+                                                                          encodeDMap,
                                                                           encodeToLower)
 import           Protocol.Webdriver.ClientAPI.Types.ProxySettings        (ProxySettings,
-                                                                          encodeProxySettings)
+                                                                          decProxySettings,
+                                                                          encProxySettings)
+import           Protocol.Webdriver.ClientAPI.Types.Timeout              (Timeout,
+                                                                          decTimeout,
+                                                                          encTimeout)
 
-import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome  (ChromeCaps, encodeChromeCaps)
-import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox (FirefoxCaps, encodeFirefoxCaps)
+import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome  (ChromeCaps,
+                                                                          decChromeCaps,
+                                                                          encChromeCaps)
+import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox (FirefoxCaps,
+                                                                          decFirefoxCaps,
+                                                                          encFirefoxCaps)
 
 data Browser
   = Firefox
   | Chrome
   | Safari
   | IE
+  | Opera
+  | IPhone
+  | IPad
+  | Android
+  | HtmlUnit
   | PhantomJS
   | Browser String
   deriving (Show, Eq)
 
-encodeBrowser :: Applicative f => E.Encoder f Browser
-encodeBrowser = encodeToLower floop
+decBrowser :: Monad f => D.Decoder f Browser
+decBrowser = D.string >>= pure . \case
+  "firefox"           -> Firefox
+  "chrome"            -> Chrome
+  "safari"            -> Safari
+  "internet explorer" -> IE
+  "opera"             -> Opera
+  "phantomjs"         -> PhantomJS
+  "iphone"            -> IPhone
+  "ipad"              -> IPad
+  "android"           -> Android
+  "htmlunit"          -> HtmlUnit
+  other               -> Browser other
+
+encBrowser :: Applicative f => E.Encoder f Browser
+encBrowser = encodeToLower floop
   where
     floop (Browser b) = b
+    floop IE          = "internet explorer"
     floop b           = show b
 
 newtype BrowserVersionString = BrowserVersionString
@@ -51,55 +88,40 @@ data PageLoad
   | Normal
   deriving (Show, Eq)
 
-encodePageLoad :: Applicative f => E.Encoder f PageLoad
-encodePageLoad = encodeToLower show
+decPageLoad :: Monad f => D.Decoder f PageLoad
+decPageLoad = D.string >>= \case
+  "none"   -> pure None
+  "eager"  -> pure Eager
+  "normal" -> pure Normal
+  _        -> throwing DE._ConversionFailure "PageLoad"
 
-newtype TimeoutVal = TimeoutVal
-  { unTimeoutVal :: Word32 }
-  deriving (Show, Eq)
-
-encodeTimeoutVal :: Applicative f => E.Encoder f TimeoutVal
-encodeTimeoutVal = unTimeoutVal >$< E.integral
-
-data TimeoutValErr
-  = TimeoutLessThanZero
-  | TimeoutExceeds2to16
-  deriving (Show, Eq)
-
-mkTimeoutVal :: Integer -> Either TimeoutValErr TimeoutVal
-mkTimeoutVal n
-  | n < 0        = Left TimeoutLessThanZero
-  | n > maxValue = Left TimeoutExceeds2to16
-  | otherwise    = Right (TimeoutVal (fromIntegral n))
-  where
-    maxValue :: Integer -- SERIOUSLY!?
-    maxValue = ((2::Integer)^(16::Integer)) - 1
-
-data Timeout = Timeout
-  { _timeoutScript       :: TimeoutVal
-  , _timeoutPageLoad     :: TimeoutVal
-  , _timeoutImplicitWait :: TimeoutVal
-  }
-  deriving (Show, Eq)
-
-defaultTimeout :: Timeout
-defaultTimeout = Timeout (TimeoutVal 30000) (TimeoutVal 300000) (TimeoutVal 0)
-
-encodeTimeout :: Applicative f => E.Encoder f Timeout
-encodeTimeout = E.mapLikeObj $ \to ->
-  E.atKey' "script" encodeTimeoutVal (_timeoutScript to) .
-  E.atKey' "pageLoad" encodeTimeoutVal (_timeoutPageLoad to) .
-  E.atKey' "implicit" encodeTimeoutVal (_timeoutImplicitWait to)
+encPageLoad :: Applicative f => E.Encoder f PageLoad
+encPageLoad = encodeToLower show
 
 data Platform
   = Linux
+  | Unix
   | Windows
-  | OSX
+  | Vista
+  | XP
+  | MacOSX
+  | Darwin
   | Platform String
   deriving (Show, Eq)
 
-encodePlatform :: Applicative f => E.Encoder f Platform
-encodePlatform = encodeToLower g
+decPlatform :: Monad f => D.Decoder f Platform
+decPlatform = D.string >>= pure . \case
+  "windows" -> Windows
+  "xp"      -> XP
+  "vista"   -> Vista
+  "mac"     -> MacOSX
+  "darwin"  -> Darwin
+  "linux"   -> Linux
+  "unix"    -> Unix
+  other     -> Platform other
+
+encPlatform :: Applicative f => E.Encoder f Platform
+encPlatform = encodeToLower g
   where
     g (Platform p) = p
     g p            = show p
@@ -112,8 +134,17 @@ data PromptHandling
   | Ignore
   deriving (Show, Eq)
 
-encodePromptHandling :: Applicative f => E.Encoder f PromptHandling
-encodePromptHandling = g >$< E.text
+decPromptHandling :: Monad f => D.Decoder f PromptHandling
+decPromptHandling = D.string >>= \case
+  "dismiss"            -> pure Dismiss
+  "accept"             -> pure Accept
+  "dismiss and notify" -> pure DismissNotify
+  "accept and notify"  -> pure AcceptNotify
+  "ignore"             -> pure Ignore
+  _ -> throwing DE._ConversionFailure "PromptHandling"
+
+encPromptHandling :: Applicative f => E.Encoder f PromptHandling
+encPromptHandling = g >$< E.text
   where
     g Dismiss       = "dismiss"
     g Accept        = "accept"
@@ -135,54 +166,98 @@ data Capability a where
   FirefoxSettings     :: Capability FirefoxCaps
   ChromeSettings      :: Capability ChromeCaps
 
-deriving instance Eq (Capability a)
-deriving instance Ord (Capability a)
-deriving instance Show (Capability a)
+deriving instance Eq a => Eq (Capability a)
+deriving instance Ord a => Ord (Capability a)
+deriving instance Show a => Show (Capability a)
 
 deriveGShow ''Capability
 deriveGEq ''Capability
 deriveGCompare ''Capability
 
+instance EqTag Capability Identity where
+  eqTagged BrowserName BrowserName                 = (==)
+  eqTagged BrowserVersion BrowserVersion           = (==)
+  eqTagged PlatformName PlatformName               = (==)
+  eqTagged AcceptInsecureCerts AcceptInsecureCerts = (==)
+  eqTagged PageLoadStrategy PageLoadStrategy       = (==)
+  eqTagged Proxy Proxy                             = (==)
+  eqTagged SetWindowRect SetWindowRect             = (==)
+  eqTagged Timeouts Timeouts                       = (==)
+  eqTagged StrictFileInteract StrictFileInteract   = (==)
+  eqTagged UnhandledBehaviour UnhandledBehaviour   = (==)
+  eqTagged FirefoxSettings FirefoxSettings         = (==)
+  eqTagged ChromeSettings ChromeSettings           = (==)
+  eqTagged _ _                                     = const (const False)
+
+instance ShowTag Capability Identity where
+  showTaggedPrec BrowserName         = showsPrec
+  showTaggedPrec BrowserVersion      = showsPrec
+  showTaggedPrec PlatformName        = showsPrec
+  showTaggedPrec AcceptInsecureCerts = showsPrec
+  showTaggedPrec PageLoadStrategy    = showsPrec
+  showTaggedPrec Proxy               = showsPrec
+  showTaggedPrec SetWindowRect       = showsPrec
+  showTaggedPrec Timeouts            = showsPrec
+  showTaggedPrec StrictFileInteract  = showsPrec
+  showTaggedPrec UnhandledBehaviour  = showsPrec
+  showTaggedPrec FirefoxSettings     = showsPrec
+  showTaggedPrec ChromeSettings      = showsPrec
+
 type Capabilities = DMap Capability Identity
 
-encodeCapabilities :: Applicative f => E.Encoder f Capabilities
-encodeCapabilities = encodeDMap $ \k -> (capabilityKeyText k, encodeAtKey k)
+capabilityKeyText :: Capability a -> Text
+capabilityKeyText k = case k of
+  BrowserName         -> "browserName"
+  BrowserVersion      -> "browserVersion"
+  PlatformName        -> "platformName"
+  AcceptInsecureCerts -> "acceptInsecureCerts"
+  PageLoadStrategy    -> "pageLoadStrategy"
+  Proxy               -> "proxy"
+  SetWindowRect       -> "setWindowRect"
+  Timeouts            -> "timeouts"
+  StrictFileInteract  -> "strictFileInteractability"
+  UnhandledBehaviour  -> "unhandledPromptBehavior"
+  FirefoxSettings     -> "moz:firefoxOptions"
+  ChromeSettings      -> "goog:chromeOptions"
+
+encodeAtKey :: Applicative f => Capability a -> E.Encoder f a
+encodeAtKey k = case k of
+  BrowserName         -> encBrowser
+  BrowserVersion      -> unBrowserVersionString >$< E.text
+  PlatformName        -> encPlatform
+  AcceptInsecureCerts -> E.bool
+  PageLoadStrategy    -> encPageLoad
+  Proxy               -> encProxySettings
+  SetWindowRect       -> E.bool
+  Timeouts            -> encTimeout
+  StrictFileInteract  -> E.bool
+  UnhandledBehaviour  -> encPromptHandling
+  FirefoxSettings     -> encFirefoxCaps
+  ChromeSettings      -> encChromeCaps
+
+encCapabilities :: Applicative f => E.Encoder f Capabilities
+encCapabilities = encodeDMap $ \k -> (capabilityKeyText k, encodeAtKey k)
+
+decCapabilities :: Monad f => D.Decoder f Capabilities
+decCapabilities = decodeDMap
+  [ atDM  BrowserName          decBrowser
+  , atDM  BrowserVersion       (BrowserVersionString <$> D.text)
+  , atDM  PlatformName         decPlatform
+  , atDM  AcceptInsecureCerts  D.bool
+  , atDM  PageLoadStrategy     decPageLoad
+  , D.try (atDM  Proxy                decProxySettings) >>= pure . fromMaybe DM.empty
+  , atDM  SetWindowRect        D.bool
+  , atDM  Timeouts             decTimeout
+  , atDM  StrictFileInteract   D.bool
+  , atDM  UnhandledBehaviour   decPromptHandling
+  , atDM  FirefoxSettings      decFirefoxCaps
+  , atDM  ChromeSettings       decChromeCaps
+  ]
   where
-    capabilityKeyText :: Capability a -> Text
-    capabilityKeyText k = case k of
-      BrowserName         -> "browserName"
-      BrowserVersion      -> "browserVersion"
-      PlatformName        -> "platformName"
-      AcceptInsecureCerts -> "acceptInsecureCerts"
-      PageLoadStrategy    -> "pageLoadStrategy"
-      Proxy               -> "proxy"
-      SetWindowRect       -> "setWindowRect"
-      Timeouts            -> "timeouts"
-      StrictFileInteract  -> "strictFileInteactability"
-      UnhandledBehaviour  -> "unhandledPromptBehavior"
-      FirefoxSettings     -> "moz:firefoxOptions"
-      ChromeSettings      -> "goog:chromeOptions"
+    atDM = dmatKey capabilityKeyText
 
-    encodeAtKey :: Applicative f => Capability a -> E.Encoder f a
-    encodeAtKey k = case k of
-      BrowserName         -> encodeBrowser
-      BrowserVersion      -> unBrowserVersionString >$< E.text
-      PlatformName        -> encodePlatform
-      AcceptInsecureCerts -> E.bool
-      PageLoadStrategy    -> encodePageLoad
-      Proxy               -> encodeProxySettings
-      SetWindowRect       -> E.bool
-      Timeouts            -> encodeTimeout
-      StrictFileInteract  -> E.bool
-      UnhandledBehaviour  -> encodePromptHandling
-      FirefoxSettings     -> encodeFirefoxCaps
-      ChromeSettings      -> encodeChromeCaps
+firefox :: Capabilities
+firefox = DM.fromList [BrowserName ==> Firefox]
 
-emptyCapabilities :: Capabilities
-emptyCapabilities = DM.empty
-
-useFirefoxOn :: Platform -> Capabilities
-useFirefoxOn p = DM.fromList [BrowserName ==> Firefox, PlatformName ==> p]
-
-useChromeOn :: Platform -> Capabilities
-useChromeOn p = DM.fromList [BrowserName ==> Chrome, PlatformName ==> p]
+chrome :: Capabilities
+chrome = DM.fromList [BrowserName ==> Chrome]

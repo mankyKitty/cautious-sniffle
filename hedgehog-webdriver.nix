@@ -1,9 +1,10 @@
-{ mkDerivation, attoparsec, base, bytestring, containers
-, contravariant, dependent-map, dependent-sum
+{ mkDerivation, attoparsec, base, base64-bytestring, bytestring
+, clay, containers, contravariant, dependent-map, dependent-sum
 , dependent-sum-template, directory, distributive, haskell-src-exts
-, hedgehog, http-client, lens, mtl, natural, pretty, scientific
-, semigroupoids, servant, servant-client, servant-waargonaut
-, stdenv, template-haskell, text, vector, waargonaut, webdriver
+, hedgehog, http-client, lens, modern-uri, mtl, natural, pretty
+, scientific, semigroupoids, servant, servant-client
+, servant-waargonaut, stdenv, template-haskell, text, vector
+, waargonaut, webdriver
 }:
 mkDerivation {
   pname = "hedgehog-webdriver";
@@ -12,18 +13,19 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    attoparsec base bytestring containers contravariant dependent-map
-    dependent-sum dependent-sum-template distributive haskell-src-exts
-    hedgehog http-client lens mtl natural pretty scientific
-    semigroupoids servant servant-client servant-waargonaut
-    template-haskell text vector waargonaut webdriver
+    attoparsec base base64-bytestring bytestring clay containers
+    contravariant dependent-map dependent-sum dependent-sum-template
+    distributive haskell-src-exts hedgehog http-client lens modern-uri
+    mtl natural pretty scientific semigroupoids servant servant-client
+    servant-waargonaut template-haskell text vector waargonaut
+    webdriver
   ];
   executableHaskellDepends = [
     base bytestring directory lens text waargonaut
   ];
   testHaskellDepends = [
-    base containers hedgehog http-client lens servant-client text
-    vector waargonaut webdriver
+    base clay containers dependent-map dependent-sum hedgehog
+    http-client lens servant-client text vector waargonaut webdriver
   ];
   doHaddock = false;
   license = "unknown";

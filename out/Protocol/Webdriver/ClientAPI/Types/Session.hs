@@ -1,62 +1,52 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 module Protocol.Webdriver.ClientAPI.Types.Session where
 
-import           Data.List.NonEmpty                              (NonEmpty ((:|)))
 import           Data.Text                                       (Text)
-import qualified GHC.Generics                                    as GHC
+import qualified Waargonaut.Decode                               as D
 import qualified Waargonaut.Encode                               as E
-import           Waargonaut.Generic                              (Generic, HasDatatypeInfo,
-                                                                  JsonDecode (..),
-                                                                  JsonEncode (..),
-                                                                  Options (..),
-                                                                  Tagged (..),
-                                                                  gDecoder,
-                                                                  gEncoder)
+import           Waargonaut.Generic                              (JsonDecode (..),
+                                                                  JsonEncode (..))
 
-import           Protocol.Webdriver.ClientAPI.Types.Capabilities (Capabilities, encodeCapabilities)
-import           Protocol.Webdriver.ClientAPI.Types.Internal     (WDJson,
-                                                                  trimWaargOpts)
+import           Servant.API                                     (ToHttpApiData (toUrlPiece))
 
-data Capability = Capability
-  { _cababilityBrowserName  :: Text
-  , _cababilityPlatformName :: Text
-  }
-  deriving (Show, Eq, GHC.Generic)
-instance HasDatatypeInfo Capability
-instance Generic Capability
-
-capaOpts :: Options
-capaOpts = trimWaargOpts "_cabability"
-
-instance JsonEncode WDJson Capability where mkEncoder = gEncoder capaOpts
-instance JsonDecode WDJson Capability where mkDecoder = gDecoder capaOpts
+import           Protocol.Webdriver.ClientAPI.Types.Capabilities (Capabilities, decCapabilities,
+                                                                  encCapabilities)
+import           Protocol.Webdriver.ClientAPI.Types.Internal     (WDJson)
 
 data NewSession = NewSession
-  { _newSessionFirstMatch :: NonEmpty Capabilities
-  , _newSessionUsername   :: Maybe Text
-  , _newSessionPassword   :: Maybe Text
+  { _newSessionCapabilities :: Capabilities
+  , _newSessionUsername     :: Maybe Text
+  , _newSessionPassword     :: Maybe Text
   }
 
-instance JsonEncode WDJson NewSession where
-  mkEncoder =
-    let
-      caps ns = case _newSessionFirstMatch ns of
-        o :| [] -> E.atKey' "alwaysMatch" encodeCapabilities o
-        xs      -> E.atKey' "firstMatch" (E.nonempty encodeCapabilities) xs
+newtype SessionId = SessionId
+  { unSessionId :: Text
+  }
+  deriving (Eq, Show)
 
-    in
-      Tagged $ E.mapLikeObj
-        (E.atKey' "capabilities"
-          (E.mapLikeObj $ \ns ->
-              E.atOptKey' "username" E.text (_newSessionUsername ns) .
-              E.atOptKey' "password" E.text (_newSessionPassword ns) .
-              caps ns
-          )
-        )
+instance ToHttpApiData SessionId where
+  toUrlPiece (SessionId sid) = sid
+
+data Session = Session
+  { _sessionId   :: SessionId
+  , _sessionCaps :: Capabilities
+  }
+  deriving (Show)
+
+instance JsonDecode WDJson Session where
+  mkDecoder = pure $ Session
+    <$> D.atKey "sessionId" (SessionId <$> D.text)
+    <*> D.atKey "capabilities" decCapabilities
+
+instance JsonEncode WDJson NewSession where
+  mkEncoder = pure $ E.mapLikeObj
+    (E.atKey' "capabilities"
+      (E.mapLikeObj $ \ns ->
+          E.atOptKey' "username" E.text (_newSessionUsername ns) .
+          E.atOptKey' "password" E.text (_newSessionPassword ns) .
+          E.atKey' "alwaysMatch" encCapabilities (_newSessionCapabilities ns)
+      )
+    )
 

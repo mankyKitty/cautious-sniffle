@@ -3,19 +3,10 @@
 {-# LANGUAGE TypeApplications  #-}
 module Main where
 
-import qualified Control.Lens                                            as L
-
-import           Data.List.NonEmpty                                      (NonEmpty (..))
-
+import           Control.Monad                                           (void)
 import           Data.Function                                           ((&))
-import           Data.Text                                               (Text)
 import qualified Data.Text.IO                                            as TIO
 import qualified Data.Text.Lazy                                          as T
-
-import qualified Data.Map                                                as Map
-
-import qualified Data.Dependent.Map                                      as DM
-import           Data.Dependent.Sum                                      ((==>))
 
 import           Control.Monad.IO.Class                                  (MonadIO,
                                                                           liftIO)
@@ -23,8 +14,9 @@ import qualified Protocol.Webdriver.ClientAPI                            as WD
 import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
-import           Protocol.Webdriver.ClientAPI.Types.Internal             (Success (unSuccess),
-                                                                          WDJson)
+import           Protocol.Webdriver.ClientAPI.Types.Internal             (Value (unValue),
+                                                                          WDJson,
+                                                                          (~=>))
 import qualified Protocol.Webdriver.ClientAPI.Types.LocationStrategy     as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Session              as WD
 
@@ -34,50 +26,48 @@ import           Servant.Client                                          (mkClie
                                                                           runClientM)
 import qualified Servant.Client                                          as C
 
-import           Waargonaut.Types.Json                                   (Json,
-                                                                          oat)
-
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
-import qualified Waargonaut.Lens                                         as WL
+import qualified Text.URI as URI
+import           Clay.Elements                                           (input)
+import           Clay.Selector                                           (byId,
+                                                                          ( # ))
 
 baseUrl :: C.BaseUrl
 baseUrl = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
 
-caps :: NonEmpty WD.Capabilities
-caps = ff :| [WD.useChromeOn WD.Linux]
+-- I needed to add this as Mozilla removed this setting but my
+-- geckdriver keeps trying to set it to an invalid value and Marionette
+-- crashes, leaving the selenium hanging. :<
+firefox :: WD.Capabilities
+firefox = WD.firefox
+  & WD.PlatformName ~=> WD.Linux
+  & WD.FirefoxSettings ~=> ffSettings
   where
-    ffSettings = DM.fromList
-        -- I needed to add this as Mozilla removed this setting but my
-        -- geckdriver keeps trying to set it to an invalid value and Marionette
-        -- crashes, leaving the selenium hanging. :<
-      [ FF.FFPrefs ==> FF.GeneralFFPrefs (Map.singleton "app.update.auto" (FF.TextPref "no"))
-      ]
+    ffSettings = mempty 
+      & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
 
-    ff = WD.useFirefoxOn WD.Linux
-      & DM.insert WD.FirefoxSettings (pure $ ffSettings)
+newSess :: WD.Capabilities -> WD.NewSession
+newSess cap = WD.NewSession cap Nothing Nothing
 
-newSess :: WD.NewSession
-newSess = WD.NewSession caps Nothing Nothing
+printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
+printEncodable = liftIO 
+  . TIO.putStrLn 
+  . T.toStrict 
+  . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
-printEnc :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
-printEnc = liftIO . TIO.putStrLn . T.toStrict . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
-
-newtype SessionId = SessionId { unSessionId :: Text } deriving (Eq, Show)
-
-getSessionId :: Json -> Maybe SessionId
-getSessionId = fmap SessionId . L.preview (oat "value" . L._Just . oat "sessionId" . L._Just . WL._String)
-
-qry :: C.ClientM Json
+qry :: C.ClientM ()
 qry = do
-  sess <- WD.newSession newSess
-  let sid = sess L.^. oat "value" . L._Just . oat "sessionId" . L._Just . WL._String
-  liftIO $ print sid
-  _ <- WD.navigateTo sid (WD.NavigateTo "http://uitestingplayground.com/textinput")
-  textInput <- WD.findElement sid (WD.Locate "css selector" "input[id='newButtonName']")
-  _ <- WD.elementSendKeys sid (unSuccess textInput) $ WD.ElementSendKeys "Fred"
-  _ <- WD.deleteSession sid
-  WD.status
+  url <- URI.mkURI "http://uitestingplayground.com/textinput"
+
+  sess <- WD.newSession (newSess firefox)
+
+  let sid = WD.unSessionId . WD._sessionId $ unValue sess
+
+  _         <- WD.navigateTo sid (WD.WDUri url)
+  textInput <- WD.findElement sid . WD.ByCss $ input # byId "newButtonName"
+  _         <- WD.elementSendKeys sid (unValue textInput) $ WD.ElementSendKeys "Fred"
+  void $ WD.deleteSession sid
 
 main :: IO ()
 main = do
@@ -85,4 +75,4 @@ main = do
   res <- runClientM qry $ mkClientEnv mgr baseUrl
   case res of
     Left err -> print err >> error "Bugger"
-    Right a  -> printEnc a
+    Right _  -> pure ()
