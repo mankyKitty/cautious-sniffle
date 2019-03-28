@@ -7,7 +7,7 @@
 , waargonaut, webdriver
 }:
 mkDerivation {
-  pname = "hedgehog-webdriver";
+  pname = "cautious-sniffle";
   version = "0.1.0.0";
   src = ./.;
   isLibrary = true;
@@ -25,7 +25,8 @@ mkDerivation {
   ];
   testHaskellDepends = [
     base clay containers dependent-map dependent-sum hedgehog
-    http-client lens servant-client text vector waargonaut webdriver
+    http-client lens modern-uri servant-client text vector waargonaut
+    webdriver
   ];
   doHaddock = false;
   license = "unknown";

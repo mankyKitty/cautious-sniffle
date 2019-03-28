@@ -67,6 +67,7 @@ qry = do
   _         <- WD.navigateTo sid (WD.WDUri url)
   textInput <- WD.findElement sid . WD.ByCss $ input # byId "newButtonName"
   _         <- WD.elementSendKeys sid (unValue textInput) $ WD.ElementSendKeys "Fred"
+
   void $ WD.deleteSession sid
 
 main :: IO ()

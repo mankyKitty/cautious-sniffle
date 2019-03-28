@@ -12,7 +12,7 @@ import           Control.Monad.Error.Lens   (throwing)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Base64     as B64
 import qualified Data.ByteString.Char8      as B8
-import           Data.Dependent.Map         (DMap)
+import           Data.Dependent.Map         (DMap, GCompare)
 import qualified Data.Dependent.Map         as DM
 import           Data.Dependent.Map.Lens    (dmat)
 import           Data.Functor.Contravariant ((>$<))
@@ -26,8 +26,8 @@ import qualified Waargonaut.Decode.Error    as DE
 import qualified Waargonaut.Encode          as E
 import           Waargonaut.Generic         (JsonDecode (..), JsonEncode (..),
                                              Options (_optionsFieldName),
-                                             Tagged (..), defaultOpts,
-                                             trimPrefixLowerFirst, untag)
+                                             defaultOpts, trimPrefixLowerFirst,
+                                             untag)
 data WDJson
 
 encodeToLower :: Applicative f => (a -> String) -> E.Encoder f a
@@ -41,11 +41,11 @@ trimWaargOpts s = defaultOpts { _optionsFieldName = trimPrefixLowerFirst s }
 
 infixr 2 ~=>
 
-(~=>) :: (DM.GCompare k, Applicative f) => k a -> a -> DM.DMap k f -> DM.DMap k f
+(~=>) :: (GCompare k, Applicative f) => k a -> a -> DM.DMap k f -> DM.DMap k f
 (~=>) k v = dmat k ?~ pure v
 
 dmatKey
-  :: ( DM.GCompare k
+  :: ( GCompare k
      , Monad g
      , Applicative f
      )
@@ -57,7 +57,13 @@ dmatKey toText k d = D.atKeyOptional (toText k) d >>= pure . \case
   Nothing -> DM.empty
   Just v  -> DM.singleton k (pure v)
 
-decodeDMap :: (DM.GCompare k, Monad f, Functor g) => [D.Decoder f (DMap k g)] -> D.Decoder f (DMap k g)
+decodeDMap 
+  :: ( GCompare k
+     , Monad f
+     , Functor g
+     ) 
+  => [D.Decoder f (DMap k g)] 
+  -> D.Decoder f (DMap k g)
 decodeDMap = fmap DM.unions . sequenceA
 
 encodeDMap
@@ -77,18 +83,17 @@ newtype Value a = Value { unValue :: a }
   deriving (Show, Eq)
 
 instance JsonDecode WDJson () where
-  mkDecoder = Tagged D.null
+  mkDecoder = pure D.null
 
 instance JsonDecode WDJson a => JsonDecode WDJson (Value a) where
-  mkDecoder = Tagged $ Value <$> D.atKey "value" (untag $ mkDecoder @WDJson)
+  mkDecoder = pure $ Value <$> D.atKey "value" (untag $ mkDecoder @WDJson)
 
 newtype Base64 = Base64
   { unBase64 :: ByteString }
   deriving (Show, Eq)
 
 decBase64 :: Monad f => D.Decoder f Base64
-decBase64 = D.string >>=
-  either
+decBase64 = D.string >>= either
   (throwing DE._ConversionFailure . mappend "Base64: " . T.pack)
   (pure . Base64)
   . B64.decode

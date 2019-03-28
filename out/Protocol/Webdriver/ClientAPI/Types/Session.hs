@@ -1,6 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE StandaloneDeriving    #-}
 module Protocol.Webdriver.ClientAPI.Types.Session where
 
 import           Data.Text                                       (Text)

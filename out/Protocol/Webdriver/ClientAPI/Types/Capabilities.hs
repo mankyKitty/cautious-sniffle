@@ -119,10 +119,9 @@ decPlatform = D.string >>= pure . \case
   other     -> Platform other
 
 encPlatform :: Applicative f => E.Encoder f Platform
-encPlatform = encodeToLower g
-  where
-    g (Platform p) = p
-    g p            = show p
+encPlatform = encodeToLower $ \case
+  Platform p -> p
+  p          -> show p
 
 data PromptHandling
   = Dismiss
@@ -216,7 +215,7 @@ decCapabilities = decodeDMap
   , atDM  PlatformName         decPlatform
   , atDM  AcceptInsecureCerts  D.bool
   , atDM  PageLoadStrategy     decPageLoad
-  , D.try (atDM  Proxy                decProxySettings) >>= pure . fromMaybe DM.empty
+  , proxy0
   , atDM  SetWindowRect        D.bool
   , atDM  Timeouts             decTimeout
   , atDM  StrictFileInteract   D.bool
@@ -225,6 +224,9 @@ decCapabilities = decodeDMap
   , atDM  ChromeSettings       decChromeCaps
   ]
   where
+    -- the "proxy" value may sometimes be "proxy:{}"
+    proxy0 = fromMaybe DM.empty <$> D.try (atDM Proxy decProxySettings)
+
     atDM = dmatKey capabilityKeyText
 
 firefox :: Capabilities

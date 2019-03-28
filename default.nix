@@ -48,7 +48,7 @@ let
       ];
   };
 
-  drv = pkgs.haskellPackages.callPackage ./hedgehog-webdriver.nix {};
+  drv = pkgs.haskellPackages.callPackage ./cautious-sniffle.nix {};
 
   drvWithTools = pkgs.haskell.lib.addBuildTools drv
     [ # The selenium server for our webdriver instructions
