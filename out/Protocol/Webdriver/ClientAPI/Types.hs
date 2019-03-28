@@ -9,7 +9,6 @@ import           Control.Exception                           (fromException)
 import           Control.Monad.Error.Lens                    (throwing)
 import           Data.Bool                                   (Bool)
 import           Data.Functor.Contravariant                  ((>$<))
-import           Data.Scientific                             (Scientific)
 import           Data.Text                                   (Text)
 import           Data.Vector                                 (Vector)
 import qualified GHC.Generics                                as GHC
@@ -67,10 +66,10 @@ instance JsonEncode WDJson CreateWindow
 instance JsonDecode WDJson CreateWindow
 
 data SetWindowRect = SetWindowRect
-  { _setWindowRectX      :: Word64,
-    _setWindowRectY      :: Word64,
-    _setWindowRectWidth  :: Word64,
-    _setWindowRectHeight :: Word64
+  { _setWindowRectX      :: Int,
+    _setWindowRectY      :: Int,
+    _setWindowRectWidth  :: Int,
+    _setWindowRectHeight :: Int
   }
   deriving (Show, Eq, GHC.Generic)
 

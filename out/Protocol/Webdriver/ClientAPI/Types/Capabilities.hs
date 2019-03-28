@@ -13,9 +13,7 @@ import           Data.Text                                               (Text)
 
 import           Data.Dependent.Map                                      (DMap)
 import qualified Data.Dependent.Map                                      as DM
-import           Data.Dependent.Sum                                      (EqTag (..),
-                                                                          ShowTag (..),
-                                                                          (==>))
+import           Data.Dependent.Sum                                      ((==>))
 import           Data.Functor.Identity                                   (Identity (..))
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
@@ -173,35 +171,8 @@ deriving instance Show a => Show (Capability a)
 deriveGShow ''Capability
 deriveGEq ''Capability
 deriveGCompare ''Capability
-
-instance EqTag Capability Identity where
-  eqTagged BrowserName BrowserName                 = (==)
-  eqTagged BrowserVersion BrowserVersion           = (==)
-  eqTagged PlatformName PlatformName               = (==)
-  eqTagged AcceptInsecureCerts AcceptInsecureCerts = (==)
-  eqTagged PageLoadStrategy PageLoadStrategy       = (==)
-  eqTagged Proxy Proxy                             = (==)
-  eqTagged SetWindowRect SetWindowRect             = (==)
-  eqTagged Timeouts Timeouts                       = (==)
-  eqTagged StrictFileInteract StrictFileInteract   = (==)
-  eqTagged UnhandledBehaviour UnhandledBehaviour   = (==)
-  eqTagged FirefoxSettings FirefoxSettings         = (==)
-  eqTagged ChromeSettings ChromeSettings           = (==)
-  eqTagged _ _                                     = const (const False)
-
-instance ShowTag Capability Identity where
-  showTaggedPrec BrowserName         = showsPrec
-  showTaggedPrec BrowserVersion      = showsPrec
-  showTaggedPrec PlatformName        = showsPrec
-  showTaggedPrec AcceptInsecureCerts = showsPrec
-  showTaggedPrec PageLoadStrategy    = showsPrec
-  showTaggedPrec Proxy               = showsPrec
-  showTaggedPrec SetWindowRect       = showsPrec
-  showTaggedPrec Timeouts            = showsPrec
-  showTaggedPrec StrictFileInteract  = showsPrec
-  showTaggedPrec UnhandledBehaviour  = showsPrec
-  showTaggedPrec FirefoxSettings     = showsPrec
-  showTaggedPrec ChromeSettings      = showsPrec
+deriveEqTagIdentity ''Capability
+deriveShowTagIdentity ''Capability
 
 type Capabilities = DMap Capability Identity
 

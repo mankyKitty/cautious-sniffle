@@ -18,7 +18,6 @@ import qualified Data.Text                                        as T
 import           Data.Maybe                                       (fromMaybe)
 
 import           Data.Dependent.Map                               (DMap)
-import           Data.Dependent.Sum                               (ShowTag (..), EqTag (..))
 import           Data.Functor.Identity                            (Identity (..))
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
@@ -145,35 +144,8 @@ deriving instance Ord a => Ord (ChromeCap a)
 deriveGShow ''ChromeCap
 deriveGEq ''ChromeCap
 deriveGCompare ''ChromeCap
-
-instance EqTag ChromeCap Identity where
-  eqTagged ChrArgs ChrArgs                         = (==)
-  eqTagged ChrBinary ChrBinary                     = (==)
-  eqTagged ChrExtensions ChrExtensions             = (==)
-  eqTagged ChrLocalState ChrLocalState             = (==)
-  eqTagged ChrPrefs ChrPrefs                       = (==)
-  eqTagged ChrDetach ChrDetach                     = (==)
-  eqTagged ChrDebuggerAddr ChrDebuggerAddr         = (==)
-  eqTagged ChrExcludeSwitches ChrExcludeSwitches   = (==)
-  eqTagged ChrMinidumpPath ChrMinidumpPath         = (==)
-  eqTagged ChrMobileEmulation ChrMobileEmulation   = (==)
-  eqTagged ChrPerfLoggingPrefs ChrPerfLoggingPrefs = (==)
-  eqTagged ChrWindowTypes ChrWindowTypes           = (==)
-  eqTagged _ _                                     = const (const False)
-
-instance ShowTag ChromeCap Identity where
-  showTaggedPrec ChrArgs             = showsPrec
-  showTaggedPrec ChrBinary           = showsPrec
-  showTaggedPrec ChrExtensions       = showsPrec
-  showTaggedPrec ChrLocalState       = showsPrec
-  showTaggedPrec ChrPrefs            = showsPrec
-  showTaggedPrec ChrDetach           = showsPrec
-  showTaggedPrec ChrDebuggerAddr     = showsPrec
-  showTaggedPrec ChrExcludeSwitches  = showsPrec
-  showTaggedPrec ChrMinidumpPath     = showsPrec
-  showTaggedPrec ChrMobileEmulation  = showsPrec
-  showTaggedPrec ChrPerfLoggingPrefs = showsPrec
-  showTaggedPrec ChrWindowTypes      = showsPrec
+deriveEqTagIdentity ''ChromeCap
+deriveShowTagIdentity ''ChromeCap
 
 chromeCapKeys :: ChromeCap a -> Text
 chromeCapKeys ChrArgs             = "args"

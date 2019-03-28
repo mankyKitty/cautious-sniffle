@@ -19,7 +19,6 @@ import           Data.Functor.Contravariant                     ((>$<))
 import           Data.Text                                      (Text)
 
 import           Data.Dependent.Map                             (DMap)
-import           Data.Dependent.Sum                             (EqTag (..), ShowTag (..))
 import           Data.Functor.Identity                          (Identity (..))
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
@@ -98,20 +97,8 @@ data FirefoxCap a where
 deriveGShow ''FirefoxCap
 deriveGEq ''FirefoxCap
 deriveGCompare ''FirefoxCap
-
-instance EqTag FirefoxCap Identity where
-  eqTagged FFBinary FFBinary   = (==)
-  eqTagged FFArgs FFArgs       = (==)
-  eqTagged FFProfile FFProfile = (==)
-  eqTagged FFLog FFLog         = (==)
-  eqTagged FFPrefs FFPrefs     = (==)
-
-instance ShowTag FirefoxCap Identity where
-  showTaggedPrec FFBinary  = showsPrec
-  showTaggedPrec FFArgs    = showsPrec
-  showTaggedPrec FFProfile = showsPrec
-  showTaggedPrec FFLog     = showsPrec
-  showTaggedPrec FFPrefs   = showsPrec
+deriveEqTagIdentity ''FirefoxCap
+deriveShowTagIdentity ''FirefoxCap
 
 type FirefoxCaps = DMap FirefoxCap Identity
 

@@ -14,8 +14,7 @@ import           GHC.Word                                    (Word16, Word8)
 
 import           Data.Dependent.Map                          (DMap, fromList)
 import qualified Data.Dependent.Map                          as DM
-import           Data.Dependent.Sum                          (ShowTag (..), EqTag (..),
-                                                              (==>))
+import           Data.Dependent.Sum                          ((==>))
 import           Data.Foldable                               (fold)
 import           Data.Functor.Identity                       (Identity (..))
 
@@ -106,30 +105,11 @@ deriving instance Eq (ProxySetting a)
 deriving instance Ord (ProxySetting a)
 deriving instance Show (ProxySetting a)
 
-instance EqTag ProxySetting Identity where
-  eqTagged PType PType                 = (==)
-  eqTagged AutoconfigUrl AutoconfigUrl = (==)
-  eqTagged Ftp Ftp                     = (==)
-  eqTagged Http Http                   = (==)
-  eqTagged NoProxy NoProxy             = (==)
-  eqTagged Https Https                 = (==)
-  eqTagged Socks Socks                 = (==)
-  eqTagged SocksVer SocksVer           = (==)
-  eqTagged _ _                         = const (const False)
-
-instance ShowTag ProxySetting Identity where
-  showTaggedPrec PType         = showsPrec
-  showTaggedPrec AutoconfigUrl = showsPrec
-  showTaggedPrec Ftp           = showsPrec
-  showTaggedPrec Http          = showsPrec
-  showTaggedPrec NoProxy       = showsPrec
-  showTaggedPrec Https         = showsPrec
-  showTaggedPrec Socks         = showsPrec
-  showTaggedPrec SocksVer      = showsPrec
-
 deriveGShow ''ProxySetting
 deriveGEq ''ProxySetting
 deriveGCompare ''ProxySetting
+deriveEqTagIdentity ''ProxySetting
+deriveShowTagIdentity ''ProxySetting
 
 type ProxySettings = DMap ProxySetting Identity
 
