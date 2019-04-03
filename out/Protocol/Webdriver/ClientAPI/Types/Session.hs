@@ -1,6 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-module Protocol.Webdriver.ClientAPI.Types.Session where
+module Protocol.Webdriver.ClientAPI.Types.Session
+  ( NewSession (..)
+  , SessionId (..)
+  , Session (..)
+  ) where
 
 import           Data.Text                                       (Text)
 import qualified Waargonaut.Decode                               as D
@@ -32,7 +36,7 @@ data Session = Session
   { _sessionId   :: SessionId
   , _sessionCaps :: Capabilities
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance JsonDecode WDJson Session where
   mkDecoder = pure $ Session

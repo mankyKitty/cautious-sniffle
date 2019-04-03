@@ -1,79 +1,127 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Monad                                           (void)
-import           Data.Function                                           ((&))
-import qualified Data.Text.IO                                            as TIO
-import qualified Data.Text.Lazy                                          as T
+import System.IO (openTempFile)
+import qualified System.Process                                  as Proc
 
-import           Control.Monad.IO.Class                                  (MonadIO,
-                                                                          liftIO)
-import qualified Protocol.Webdriver.ClientAPI                            as WD
-import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
-import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
-import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
-import           Protocol.Webdriver.ClientAPI.Types.Internal             (Value (unValue),
-                                                                          WDJson,
-                                                                          (~=>))
-import qualified Protocol.Webdriver.ClientAPI.Types.LocationStrategy     as WD
-import qualified Protocol.Webdriver.ClientAPI.Types.Session              as WD
+import           Control.Concurrent                              (forkIO,
+                                                                  killThread,
+                                                                  threadDelay)
+import           Control.Exception                               (bracket)
+import           Control.Monad                                   (void)
+import           Control.Monad.IO.Class                          (MonadIO)
 
-import qualified Network.HTTP.Client                                     as HTTP
+import qualified Servant.Client                                  as Servant
 
-import           Servant.Client                                          (mkClientEnv,
-                                                                          runClientM)
-import qualified Servant.Client                                          as C
+import qualified Network.HTTP.Client                             as HTTP
+import qualified Web.Scotty                                      as W
 
-import qualified Waargonaut.Encode                                       as E
-import qualified Waargonaut.Generic                                      as G
-import qualified Text.URI as URI
-import           Clay.Elements                                           (input)
-import           Clay.Selector                                           (byId,
-                                                                          ( # ))
+import           Hedgehog                                        (Group (..),
+                                                                  MonadTest,
+                                                                  Property,
+                                                                  PropertyT,
+                                                                  checkSequential,
+                                                                  evalEither,
+                                                                  evalIO,
+                                                                  executeSequential,
+                                                                  forAll,
+                                                                  property,
+                                                                  withTests)
 
-baseUrl :: C.BaseUrl
-baseUrl = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
+import qualified Hedgehog.Gen                                    as Gen
+import qualified Hedgehog.Range                                  as Range
 
--- I needed to add this as Mozilla removed this setting but my
--- geckdriver keeps trying to set it to an invalid value and Marionette
--- crashes, leaving the selenium hanging. :<
-firefox :: WD.Capabilities
-firefox = WD.firefox
-  & WD.PlatformName ~=> WD.Linux
-  & WD.FirefoxSettings ~=> ffSettings
-  where
-    ffSettings = mempty 
-      & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
+import qualified Protocol.Webdriver.ClientAPI                    as W
+import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities as W
+import qualified Protocol.Webdriver.ClientAPI.Types.Internal     as W
+import qualified Protocol.Webdriver.ClientAPI.Types.Session      as W
 
-newSess :: WD.Capabilities -> WD.NewSession
-newSess cap = WD.NewSession cap Nothing Nothing
+import           Commands
+import           Types
 
-printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
-printEncodable = liftIO 
-  . TIO.putStrLn 
-  . T.toStrict 
-  . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
+htmlunitSession :: W.NewSession
+htmlunitSession =
+  W.NewSession
+    -- (W.singleton W.BrowserName (pure W.HtmlUnit))  -- Browser config
+    (W.asHeadless W.chrome)
+    Nothing                                        -- username
+    Nothing                                        -- password
 
-qry :: C.ClientM ()
-qry = do
-  url <- URI.mkURI "http://uitestingplayground.com/textinput"
+webdriverStateTest
+  :: WDRun (PropertyT IO)
+  -> W.Session
+  -> Property
+webdriverStateTest runner sess = withTests 5 . property $ do
+  let
+    initialModel = Model
+      False
+      Nothing
 
-  sess <- WD.newSession (newSess firefox)
+    mk c =
+      c runner (W._sessionId sess)
 
-  let sid = WD.unSessionId . WD._sessionId $ unValue sess
+    commands =
+      [ mk cFindElement
+      , mk cNavigateTo
+      , mk cSendKeys
+      ]
 
-  _         <- WD.navigateTo sid (WD.WDUri url)
-  textInput <- WD.findElement sid . WD.ByCss $ input # byId "newButtonName"
-  _         <- WD.elementSendKeys sid (unValue textInput) $ WD.ElementSendKeys "Fred"
+  actions <- forAll $ Gen.sequential (Range.linear 1 10) initialModel commands
+  executeSequential initialModel actions
 
-  void $ WD.deleteSession sid
-
-main :: IO ()
+main :: IO Bool
 main = do
-  mgr <- HTTP.newManager HTTP.defaultManagerSettings
-  res <- runClientM qry $ mkClientEnv mgr baseUrl
-  case res of
-    Left err -> print err >> error "Bugger"
-    Right _  -> pure ()
+  env <- flip Servant.mkClientEnv W.defaultWebdriverClient
+    <$> HTTP.newManager HTTP.defaultManagerSettings
+
+  let
+    stopSeleniumAndWebServer (web, sel) = do
+      killThread web
+      Proc.terminateProcess sel
+
+    startSeleniumAndWebServer = do
+      sel <- localSelenium
+      putStrLn "Pause to allow selenium to start" >> threadDelay 2000000
+      ws <- forkIO babbyTestWebServer
+      pure (ws, sel)
+
+    runForEither a =
+      Servant.runClientM a env
+
+    runner =
+      WDRun (runWDAction env) (evalIO . runForEither)
+
+  bracket startSeleniumAndWebServer stopSeleniumAndWebServer .
+    const $ do
+      sess <- either (error . show) (pure . W.unValue) =<< runForEither (W.newSession htmlunitSession)
+      b <- checkSequential $ Group "WebDriver Tests" [
+        ("Webdriver command sequences", webdriverStateTest runner sess)
+        ]
+      void $ runForEither (W.deleteSession (W._sessionId sess))
+      pure b
+
+runWDAction
+  :: ( MonadIO m
+     , MonadTest m
+     )
+  => Servant.ClientEnv
+  -> Servant.ClientM b
+  -> m b
+runWDAction env action =
+  evalIO (Servant.runClientM action env) >>= evalEither
+
+babbyTestWebServer :: IO ()
+babbyTestWebServer = W.scotty 9999 $ do
+  W.get "/" (W.file "test/test-webpage.html")
+  W.get "/taco" (W.file "test/test-taco-webpage.html")
+
+localSelenium
+  :: IO Proc.ProcessHandle
+localSelenium = do
+  (f, _) <- openTempFile "/tmp/" "SELENIUM_WD_LOG.log"
+  putStrLn $ "Selenium log file: " <> f
+  Proc.spawnCommand $ "selenium-server -port 4444 -debug -log " <> f

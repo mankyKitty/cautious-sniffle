@@ -7,20 +7,32 @@
 {-# LANGUAGE TypeApplications      #-}
 module Protocol.Webdriver.ClientAPI.Types.Internal where
 
-import           Control.Lens               ((?~))
+import           Control.Error.Util         (note)
+import           Control.Lens               (over, (%~), (?~), _head)
 import           Control.Monad.Error.Lens   (throwing)
+
+import           Data.Bifunctor             (bimap)
+
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Base64     as B64
 import qualified Data.ByteString.Char8      as B8
+
+import qualified Data.Char                  as C
+
 import           Data.Dependent.Map         (DMap, GCompare)
 import qualified Data.Dependent.Map         as DM
 import           Data.Dependent.Map.Lens    (dmat)
+
+import           Data.Function              ((&))
 import           Data.Functor.Contravariant ((>$<))
 import           Data.Functor.Identity      (Identity (..))
+
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Data.Vector                (Vector)
 import qualified Data.Vector                as V
+import           Text.Read                  (readMaybe)
+
 import qualified Waargonaut.Decode          as D
 import qualified Waargonaut.Decode.Error    as DE
 import qualified Waargonaut.Encode          as E
@@ -29,6 +41,21 @@ import           Waargonaut.Generic         (JsonDecode (..), JsonEncode (..),
                                              defaultOpts, trimPrefixLowerFirst,
                                              untag)
 data WDJson
+
+withA :: Monad f => D.Decoder f a -> (a -> Either Text b) -> D.Decoder f b
+withA from to = from >>= either (throwing DE._ConversionFailure) pure . to
+
+withString :: Monad f => (String -> Either Text a) -> D.Decoder f a
+withString = withA D.string
+
+withText :: Monad f => (Text -> Either Text a) -> D.Decoder f a
+withText = withA D.text
+
+encodeShowToLower :: (Show a, Applicative f) => E.Encoder f a
+encodeShowToLower = T.toLower . T.pack . show >$< E.text
+
+decodeFromReadUCFirst :: (Read a, Monad f) => Text -> D.Decoder f a
+decodeFromReadUCFirst l = withString (note l . readMaybe . over _head C.toUpper)
 
 encodeToLower :: Applicative f => (a -> String) -> E.Encoder f a
 encodeToLower f = T.toLower . T.pack . f >$< E.text
@@ -41,8 +68,24 @@ trimWaargOpts s = defaultOpts { _optionsFieldName = trimPrefixLowerFirst s }
 
 infixr 2 ~=>
 
-(~=>) :: (GCompare k, Applicative f) => k a -> a -> DM.DMap k f -> DM.DMap k f
+(~=>) :: (GCompare k, Applicative f) => k a -> a -> DMap k f -> DMap k f
 (~=>) k v = dmat k ?~ pure v
+
+updateInnerSetting
+  :: ( Applicative g
+     , Applicative f
+     , DM.GCompare k1
+     , DM.GCompare k2
+     )
+  => k1 (DMap k2 f)
+  -> k2 a
+  -> a
+  -> (a -> a)
+  -> DMap k1 g
+  -> DMap k1 g
+updateInnerSetting outerKey innerKey opt f dm0 = dm0 & dmat outerKey %~ Just . maybe
+  (pure $ DM.singleton innerKey (pure opt))
+  (fmap (dmat innerKey %~ Just . maybe (pure opt) (fmap f)))
 
 dmatKey
   :: ( GCompare k
@@ -57,14 +100,15 @@ dmatKey toText k d = D.atKeyOptional (toText k) d >>= pure . \case
   Nothing -> DM.empty
   Just v  -> DM.singleton k (pure v)
 
-decodeDMap 
+decodeDMap
   :: ( GCompare k
      , Monad f
      , Functor g
-     ) 
-  => [D.Decoder f (DMap k g)] 
+     )
+  => [D.Decoder f (DMap k g)]
   -> D.Decoder f (DMap k g)
-decodeDMap = fmap DM.unions . sequenceA
+decodeDMap =
+  fmap DM.unions . sequenceA
 
 encodeDMap
   :: Applicative f
@@ -93,11 +137,7 @@ newtype Base64 = Base64
   deriving (Show, Eq)
 
 decBase64 :: Monad f => D.Decoder f Base64
-decBase64 = D.string >>= either
-  (throwing DE._ConversionFailure . mappend "Base64: " . T.pack)
-  (pure . Base64)
-  . B64.decode
-  . B8.pack
+decBase64 = withString $ (bimap (mappend "Base64 : " . T.pack) Base64 . B64.decode . B8.pack)
 
 encBase64 :: Applicative f => E.Encoder f Base64
 encBase64 = (B8.unpack . B64.encode . unBase64) >$< E.string

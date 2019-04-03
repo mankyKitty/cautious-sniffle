@@ -6,15 +6,13 @@
 {-# LANGUAGE TemplateHaskell       #-}
 module Protocol.Webdriver.ClientAPI.Types.ProxySettings where
 
-import           Control.Monad.Error.Lens                    (throwing)
 import           Data.Functor.Contravariant                  ((>$<))
 import           Data.Text                                   (Text)
 import qualified Data.Text                                   as T
 import           GHC.Word                                    (Word16, Word8)
 
-import           Data.Dependent.Map                          (DMap, fromList)
+import           Data.Dependent.Map                          (DMap)
 import qualified Data.Dependent.Map                          as DM
-import           Data.Dependent.Sum                          ((==>))
 import           Data.Foldable                               (fold)
 import           Data.Functor.Identity                       (Identity (..))
 
@@ -24,12 +22,13 @@ import           Data.GADT.Show.TH
 import           Text.Read                                   (readMaybe)
 
 import qualified Waargonaut.Decode                           as D
-import qualified Waargonaut.Decode.Error                     as DE
 import qualified Waargonaut.Encode                           as E
 
 import           Protocol.Webdriver.ClientAPI.Types.Internal (decodeDMap,
                                                               dmatKey,
-                                                              encodeToLower)
+                                                              encodeToLower,
+                                                              withString,
+                                                              withText)
 
 data ProxyType
   = Pac        -- "pac"
@@ -40,13 +39,13 @@ data ProxyType
   deriving (Show, Eq)
 
 decProxyType :: Monad f => D.Decoder f ProxyType
-decProxyType = D.string >>= \case
+decProxyType = withString $ \case
  "pac"        -> pure Pac
  "direct"     -> pure Direct
  "autodetect" -> pure Autodetect
  "system"     -> pure System
  "manual"     -> pure Manual
- _            -> throwing DE._ConversionFailure "ProxyType"
+ _            -> Left "ProxyType"
 
 encProxyType :: Applicative f => E.Encoder f ProxyType
 encProxyType = encodeToLower show
@@ -55,7 +54,7 @@ newtype HostPort = HostPort (Text, Maybe Word16)
   deriving (Show, Eq)
 
 decHostPort :: Monad f => D.Decoder f HostPort
-decHostPort = D.text >>= \t -> case T.breakOn ":" t of
+decHostPort = withText $ \t -> case T.breakOn ":" t of
   (host, port) -> pure $ HostPort (host, readMaybe (T.unpack port))
 
 encHostPort :: Applicative f => E.Encoder f HostPort
@@ -132,7 +131,7 @@ encProxySettings = E.mapLikeObj $ \ps obj -> DM.foldrWithKey
   (\k (Identity v) -> E.atKey' (proxySettingKey k) (proxySettingEncode k) v) obj ps
 
 emptyManualProxy :: ProxySettings
-emptyManualProxy = fromList [PType ==> Manual]
+emptyManualProxy = DM.singleton PType (pure Manual)
 
 ftpProxy :: HostPort -> ProxySettings
 ftpProxy hp = DM.insert Ftp (pure hp) emptyManualProxy

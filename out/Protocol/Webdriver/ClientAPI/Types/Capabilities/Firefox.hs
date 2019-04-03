@@ -6,7 +6,26 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-module Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox where
+module Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox
+  ( -- * Types
+    PrefVal (..)
+  , GeneralFFPrefs (..)
+  , FirefoxCap (..)
+  , FirefoxCaps
+
+    -- * Helpers
+  , newPrefs
+  , setBoolPref
+  , setTextPref
+  , setNumPref
+  , ffCapKeys
+  , ffCapEnc
+
+    -- * Encoders/Decoders
+  , encFirefoxCaps, decFirefoxCaps
+  , encPrefVal, decPrefVal
+  , encGeneralPrefs, decGeneralPrefs
+  ) where
 
 import           Control.Lens                                   (At (..), Index,
                                                                  IxValue,

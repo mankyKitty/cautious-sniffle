@@ -5,7 +5,31 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TupleSections         #-}
-module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome where
+module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome 
+  ( -- * Types
+    ChromeCap (..)
+  , ChromeCaps
+  , ChromeLocalState (..)
+  , ChromePrefs (..)
+  , DebuggerAddr (..)
+  , ExcludeSwitches (..)
+  , ChromeExtension (..)
+  , ChromeMobileEmu (..)
+  , WindowTypes (..)
+
+    -- * Helpers
+  , chromeCapKeys
+  , chromeCapEnc 
+
+    -- * Encoders/Decoders
+  , decChromeMobileEmu
+  , encChromeExtension, decChromeExtension
+  , encExcludeSwitches, decExcludeSwitches
+  , encDebuggerAddr, decDebuggerAddr
+  , encChromePrefs, decChromePrefs
+  , encChromeLocalState, decChromeLocalState
+  , encChromeCaps, decChromeCaps
+  ) where
 
 import           Control.Lens                                     (preview,
                                                                    ( # ), _1)

@@ -5,28 +5,62 @@
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
-module Protocol.Webdriver.ClientAPI.Types.Capabilities where
+module Protocol.Webdriver.ClientAPI.Types.Capabilities 
+  ( 
+    -- * Types
+    Browser (..)
+  , Platform (..)
+  , PromptHandling (..)
+  , BrowserVersionString (..)
+  , PageLoad (..)
+  , Capability (..)
+  , Capabilities
 
-import           Control.Monad.Error.Lens                                (throwing)
-import           Data.Functor.Contravariant                              ((>$<))
-import           Data.Text                                               (Text)
+    -- * Encoders/Decoders
+  , encPromptHandling, decPromptHandling
+  , encPlatform, decPlatform
+  , encCapabilities, decCapabilities
+  , encBrowser, decBrowser 
+  , encPageLoad, decPageLoad
+  , capabilityKeyText
+  , encodeAtKey
 
-import           Data.Dependent.Map                                      (DMap)
-import qualified Data.Dependent.Map                                      as DM
+    -- Helper functions
+  , firefox
+  , chrome
+  , asHeadless
+
+    -- * Re-exports
+  , module Data.Dependent.Map
+  , dmat
+  , (==>)
+  ) where
+
+import           Control.Lens                                            (cons,
+                                                                          (^.))
+import           Data.Dependent.Map                                      
+import           Data.Dependent.Map.Lens                                 (dmat)
 import           Data.Dependent.Sum                                      ((==>))
+import           Data.Functor.Alt                                        ((<!>))
+import           Data.Functor.Contravariant                              ((>$<))
 import           Data.Functor.Identity                                   (Identity (..))
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
 import           Data.Maybe                                              (fromMaybe)
+import           Data.Text                                               (Text)
+import qualified Data.Text                                               as T
 
 import qualified Waargonaut.Decode                                       as D
-import qualified Waargonaut.Decode.Error                                 as DE
 import qualified Waargonaut.Encode                                       as E
 
 import           Protocol.Webdriver.ClientAPI.Types.Internal             (decodeDMap,
+                                                                          decodeFromReadUCFirst,
                                                                           dmatKey,
                                                                           encodeDMap,
-                                                                          encodeToLower)
+                                                                          encodeShowToLower,
+                                                                          encodeToLower,
+                                                                          updateInnerSetting,
+                                                                          withString)
 import           Protocol.Webdriver.ClientAPI.Types.ProxySettings        (ProxySettings,
                                                                           decProxySettings,
                                                                           encProxySettings)
@@ -34,10 +68,12 @@ import           Protocol.Webdriver.ClientAPI.Types.Timeout              (Timeou
                                                                           decTimeout,
                                                                           encTimeout)
 
-import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome  (ChromeCaps,
+import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome  (ChromeCap (ChrArgs),
+                                                                          ChromeCaps,
                                                                           decChromeCaps,
                                                                           encChromeCaps)
-import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox (FirefoxCaps,
+import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox (FirefoxCap (FFArgs),
+                                                                          FirefoxCaps,
                                                                           decFirefoxCaps,
                                                                           encFirefoxCaps)
 
@@ -53,21 +89,13 @@ data Browser
   | HtmlUnit
   | PhantomJS
   | Browser String
-  deriving (Show, Eq)
+  deriving (Show, Read, Eq)
 
 decBrowser :: Monad f => D.Decoder f Browser
-decBrowser = D.string >>= pure . \case
-  "firefox"           -> Firefox
-  "chrome"            -> Chrome
-  "safari"            -> Safari
-  "internet explorer" -> IE
-  "opera"             -> Opera
-  "phantomjs"         -> PhantomJS
-  "iphone"            -> IPhone
-  "ipad"              -> IPad
-  "android"           -> Android
-  "htmlunit"          -> HtmlUnit
-  other               -> Browser other
+decBrowser = decodeFromReadUCFirst "Browser" <!> withString else0
+  where
+    else0 "internet explorer" = pure IE
+    else0 s                   = pure (Browser s)
 
 encBrowser :: Applicative f => E.Encoder f Browser
 encBrowser = encodeToLower floop
@@ -84,17 +112,13 @@ data PageLoad
   = None
   | Eager
   | Normal
-  deriving (Show, Eq)
+  deriving (Show, Read, Eq)
 
 decPageLoad :: Monad f => D.Decoder f PageLoad
-decPageLoad = D.string >>= \case
-  "none"   -> pure None
-  "eager"  -> pure Eager
-  "normal" -> pure Normal
-  _        -> throwing DE._ConversionFailure "PageLoad"
+decPageLoad = decodeFromReadUCFirst "PageLoad"
 
 encPageLoad :: Applicative f => E.Encoder f PageLoad
-encPageLoad = encodeToLower show
+encPageLoad = encodeShowToLower
 
 data Platform
   = Linux
@@ -104,23 +128,15 @@ data Platform
   | XP
   | MacOSX
   | Darwin
-  | Platform String
-  deriving (Show, Eq)
+  | Platform Text
+  deriving (Show, Read, Eq)
 
 decPlatform :: Monad f => D.Decoder f Platform
-decPlatform = D.string >>= pure . \case
-  "windows" -> Windows
-  "xp"      -> XP
-  "vista"   -> Vista
-  "mac"     -> MacOSX
-  "darwin"  -> Darwin
-  "linux"   -> Linux
-  "unix"    -> Unix
-  other     -> Platform other
+decPlatform = decodeFromReadUCFirst "Platform" <!> (Platform <$> D.text)
 
 encPlatform :: Applicative f => E.Encoder f Platform
 encPlatform = encodeToLower $ \case
-  Platform p -> p
+  Platform p -> T.unpack p
   p          -> show p
 
 data PromptHandling
@@ -132,13 +148,13 @@ data PromptHandling
   deriving (Show, Eq)
 
 decPromptHandling :: Monad f => D.Decoder f PromptHandling
-decPromptHandling = D.string >>= \case
+decPromptHandling = withString $ \case
   "dismiss"            -> pure Dismiss
   "accept"             -> pure Accept
   "dismiss and notify" -> pure DismissNotify
   "accept and notify"  -> pure AcceptNotify
   "ignore"             -> pure Ignore
-  _ -> throwing DE._ConversionFailure "PromptHandling"
+  _                    -> Left "PromptHandling"
 
 encPromptHandling :: Applicative f => E.Encoder f PromptHandling
 encPromptHandling = g >$< E.text
@@ -225,12 +241,23 @@ decCapabilities = decodeDMap
   ]
   where
     -- the "proxy" value may sometimes be "proxy:{}"
-    proxy0 = fromMaybe DM.empty <$> D.try (atDM Proxy decProxySettings)
+    proxy0 = fromMaybe empty <$> D.try (atDM Proxy decProxySettings)
 
     atDM = dmatKey capabilityKeyText
 
 firefox :: Capabilities
-firefox = DM.fromList [BrowserName ==> Firefox]
+firefox = singleton BrowserName (pure Firefox)
 
 chrome :: Capabilities
-chrome = DM.fromList [BrowserName ==> Chrome]
+chrome = singleton BrowserName (pure Chrome)
+
+asHeadless :: Capabilities -> Capabilities
+asHeadless c0 = case runIdentity <$> c0 ^. dmat BrowserName of
+  Nothing      -> c0
+  Just Firefox -> updateInnerSetting FirefoxSettings FFArgs [ffopt] (cons ffopt) c0
+  Just Chrome  -> updateInnerSetting ChromeSettings ChrArgs [chromeopt] (cons chromeopt) c0
+  Just _       -> c0
+  where
+    hl = "headless"
+    ffopt = "-" <> hl
+    chromeopt = "--" <> hl

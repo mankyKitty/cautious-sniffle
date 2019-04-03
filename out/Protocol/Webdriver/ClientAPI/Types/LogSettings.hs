@@ -1,17 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Protocol.Webdriver.ClientAPI.Types.LogSettings where
 
-import           Control.Monad.Error.Lens                    (throwing)
+import           Control.Error.Util                          (note)
 import qualified Data.Char                                   as C
 import           Data.Functor.Contravariant                  ((>$<))
 import           Text.Read                                   (readMaybe)
-
+import qualified Data.Text as T
 import qualified Waargonaut.Decode                           as D
-import qualified Waargonaut.Decode.Error                     as DE
 import qualified Waargonaut.Encode                           as E
 
 import           Protocol.Webdriver.ClientAPI.Types.Internal (encodeToLower,
-                                                              singleValueObj)
+                                                              singleValueObj,
+                                                              withString)
 data LogLevel
   = TRACE
   | DEBUG
@@ -26,10 +26,9 @@ encLogLevel :: Applicative f => E.Encoder f LogLevel
 encLogLevel = encodeToLower show
 
 decLogLevel :: Monad f => D.Decoder f LogLevel
-decLogLevel = D.string >>= maybe (throwing DE._ConversionFailure "LogLevel") pure . mll
-  where
-    mll :: String -> Maybe LogLevel
-    mll = readMaybe . fmap C.toUpper
+decLogLevel = withString $ \s -> note ("LogLevel : " <> T.pack s) 
+  . readMaybe 
+  $ C.toUpper <$> s
 
 data LogSettings = LogSettings
   { _logLevel :: LogLevel
