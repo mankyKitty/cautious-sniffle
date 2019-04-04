@@ -57,8 +57,8 @@ printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
-usingSession :: G.UsingSess -> C.ClientM ()
-usingSession G.WithSessionAPI {..} = do
+usingSession :: G.SessionClient -> C.ClientM ()
+usingSession G.SessionAPI {..} = do
   let
     buttonId = "newButtonName"
     textInputValue = "Fred"
@@ -78,40 +78,13 @@ usingSession G.WithSessionAPI {..} = do
   void $ deleteSession
 
 usingGenerics :: C.ClientM ()
-usingGenerics =
-  WD._sessionId . unValue <$> G.newSession G.wdClient (newSess firefox)
-  >>= usingSession . G.withSessionClient
-
-qry :: C.ClientM ()
-qry = do
-  let api = F.mkWDApi
-  url <- URI.mkURI "http://uitestingplayground.com/textinput"
-
-  sess <- F.newSession api (newSess firefox)
-
-  let
-    sid = WD._sessionId $ unValue sess
-    currSess = F.withSession api sid
-
-    buttonId = "newButtonName"
-    textInputValue = "Fred"
-
-  _         <- F.navigateTo currSess (WD.WDUri url)
-  textInput <- F.findElement currSess . WD.ByCss $ input # byId buttonId
-  _         <- F.elementSendKeys currSess (unValue textInput) $ WD.ElementSendKeys textInputValue
-
-  attr     <- F.getElementAttribute currSess (unValue textInput) "id"
-  unless (unValue attr == buttonId) $ error "attribute mismatch"
-
-  prop     <- F.getElementProperty currSess (unValue textInput) "value"
-  unless (unValue prop == textInputValue) $ error "text input value mismatch"
-
-  void $ F.deleteSession currSess
+usingGenerics = G.newSession G.wdClient (newSess firefox)
+  >>= usingSession . G.withSessionClient . WD._sessionId . unValue
 
 main :: IO ()
 main = do
   mgr <- HTTP.newManager HTTP.defaultManagerSettings
-  res <- runClientM qry $ mkClientEnv mgr baseUrl
+  res <- runClientM usingGenerics $ mkClientEnv mgr baseUrl
   case res of
     Left err -> print err >> error "Bugger"
     Right _  -> pure ()

@@ -16,7 +16,7 @@ library wd-api
   exposed-modules:     Protocol.Webdriver.ClientAPI
                      , Protocol.Webdriver.ClientAPI.Record
                      , Protocol.Webdriver.ClientAPI.GENERICS
-                     , Protocol.Webdriver.ClientAPI.WithSessionAPI
+                     , Protocol.Webdriver.ClientAPI.SessionAPI
                      , Protocol.Webdriver.ClientAPI.Types
                      , Protocol.Webdriver.ClientAPI.Types.Session
                      , Protocol.Webdriver.ClientAPI.Types.Timeout

@@ -141,3 +141,6 @@ decBase64 = withString $ (bimap (mappend "Base64 : " . T.pack) Base64 . B64.deco
 
 encBase64 :: Applicative f => E.Encoder f Base64
 encBase64 = (B8.unpack . B64.encode . unBase64) >$< E.string
+
+instance JsonDecode WDJson Base64 where mkDecoder = pure decBase64
+instance JsonEncode WDJson Base64 where mkEncoder = pure encBase64
