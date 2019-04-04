@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
@@ -10,7 +11,6 @@ import qualified Data.Text.Lazy                                          as T
 
 import           Control.Monad.IO.Class                                  (MonadIO,
                                                                           liftIO)
-import qualified Protocol.Webdriver.ClientAPI                            as WD
 import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
@@ -32,6 +32,7 @@ import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
 
+import qualified Protocol.Webdriver.ClientAPI.GENERICS as G
 import qualified Protocol.Webdriver.ClientAPI.Record as F
 
 baseUrl :: C.BaseUrl
@@ -56,11 +57,13 @@ printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
-usingSession :: F.InSession -> C.ClientM ()
-usingSession F.InSession {..} = do
+usingSession :: G.UsingSess -> C.ClientM ()
+usingSession G.WithSessionAPI {..} = do
   let
     buttonId = "newButtonName"
     textInputValue = "Fred"
+
+  url <- URI.mkURI "http://uitestingplayground.com/textinput"
 
   _         <- navigateTo (WD.WDUri url)
   textInput <- findElement . WD.ByCss $ input # byId buttonId
@@ -73,6 +76,11 @@ usingSession F.InSession {..} = do
   unless (unValue prop == textInputValue) $ error "text input value mismatch"
 
   void $ deleteSession
+
+usingGenerics :: C.ClientM ()
+usingGenerics =
+  WD._sessionId . unValue <$> G.newSession G.wdClient (newSess firefox)
+  >>= usingSession . G.withSessionClient
 
 qry :: C.ClientM ()
 qry = do

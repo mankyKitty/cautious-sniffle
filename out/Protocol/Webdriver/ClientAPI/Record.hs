@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies    #-}
 {-# LANGUAGE TypeOperators   #-}
 {-# OPTIONS_GHC -Wno-missing-signatures#-}
 module Protocol.Webdriver.ClientAPI.Record
@@ -27,89 +28,88 @@ import           Protocol.Webdriver.ClientAPI.Types.Session          (NewSession
 import           Protocol.Webdriver.ClientAPI.Types.Timeout          (Timeout)
 import           Servant.API
 import           Servant.API.ContentTypes.Waargonaut                 (WaargJSON)
-import           Servant.Client
+import           Servant.Client                                      (ClientM)
+import qualified Servant.Client                                      as C
 import           Waargonaut.Types.Json                               (Json)
 
-type WebDriverAPI =
-       ("status" :> Get '[WaargJSON WDJson] Json)
+type WebDriverAPI
+  = ("status" :> Get '[WaargJSON WDJson] Json)
   :<|> "session" :> (
-
-       (ReqBody '[WaargJSON WDJson] NewSession :> Post '[WaargJSON WDJson] (Value Session))
-
-  :<|> Capture "sessionId" SessionId :> (
-
-        ("actions" :> Delete '[] NoContent)
-    :<|> ("actions" :> ReqBody '[WaargJSON WDJson] PerformActions :> Post '[] NoContent)
-  
-    :<|> ("alert" :> "accept" :> Post '[] NoContent)
-    :<|> ("alert" :> "dismiss" :> Post '[] NoContent)
-    :<|> ("alert" :> "text" :> Get '[WaargJSON WDJson] Text)
-    :<|> ("alert" :> "text" :> ReqBody '[WaargJSON WDJson] SendAlertText :> Post '[] NoContent)
-  
-    :<|> ("back" :> Post '[] NoContent)
-  
-    :<|> ("cookie" :> Capture "name" Text :> Delete '[] NoContent)
-    :<|> ("cookie" :> Capture "name" Text :> Get '[WaargJSON WDJson] Json)
-    :<|> ("cookie" :> Delete '[] NoContent)
-    :<|> ("cookie" :> Get '[WaargJSON WDJson] (Vector Json))
-    :<|> ("cookie" :> ReqBody '[WaargJSON WDJson] AddCookie :> Post '[] NoContent)
-  
-    :<|> ("element" :> "active" :> Post '[WaargJSON WDJson] (Value ElementId))
-    :<|> ("element" :> Capture "elementId" ElementId :> "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Value Text))
-    :<|> ("element" :> Capture "elementId" ElementId :> "clear" :> Post '[] NoContent)
-    :<|> ("element" :> Capture "elementId" ElementId :> "click" :> Post '[] NoContent)
-    :<|> ("element" :> Capture "elementId" ElementId :> "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] (Value Text))
-    :<|> ("element" :> Capture "elementId" ElementId :> "displayed" :> Get '[WaargJSON WDJson] (Value Bool))
-    :<|> ("element" :> Capture "elementId" ElementId :> "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value ElementId))
-    :<|> ("element" :> Capture "elementId" ElementId :> "elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value (Vector ElementId)))
-    :<|> ("element" :> Capture "elementId" ElementId :> "enabled" :> Get '[WaargJSON WDJson] (Value Bool))
-    :<|> ("element" :> Capture "elementId" ElementId :> "name" :> Get '[WaargJSON WDJson] (Value Text))
-    :<|> ("element" :> Capture "elementId" ElementId :> "property" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Value Text))
-    :<|> ("element" :> Capture "elementId" ElementId :> "rect" :> Get '[WaargJSON WDJson] (Value Json))
-    :<|> ("element" :> Capture "elementId" ElementId :> "screenshot" :> ReqBody '[WaargJSON WDJson] TakeElementScreenshot :> Get '[WaargJSON WDJson] (Value Text))
-    :<|> ("element" :> Capture "elementId" ElementId :> "selected" :> Get '[WaargJSON WDJson] (Value Bool))
-    :<|> ("element" :> Capture "elementId" ElementId :> "text" :> Get '[WaargJSON WDJson] (Value Text))
-    :<|> ("element" :> Capture "elementId" ElementId :> "value" :> ReqBody '[WaargJSON WDJson] ElementSendKeys :> Post '[] NoContent)
-
-    :<|> ("element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value ElementId))
-    :<|> ("elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value (Vector ElementId)))
-  
-    :<|> ("execute" :> "async" :> ReqBody '[WaargJSON WDJson] ExecuteAsyncScript :> Post '[WaargJSON WDJson] Json)
-    :<|> ("execute" :> "sync" :> ReqBody '[WaargJSON WDJson] ExecuteScript :> Post '[WaargJSON WDJson] Json)
-  
-    :<|> ("forward" :> Post '[] NoContent)
-  
-    :<|> ("frame" :> "parent" :> Post '[] NoContent)
-    :<|> ("frame" :> ReqBody '[WaargJSON WDJson] SwitchToFrame :> Post '[] NoContent)
-  
-    :<|> ("refresh" :> Post '[] NoContent)
-  
-    :<|> ("screenshot" :> Get '[WaargJSON WDJson] Text)
-  
-    :<|> ("source" :> Get '[] NoContent)
-  
-    :<|> ("timeouts" :> Get '[WaargJSON WDJson] Json)
-    :<|> ("timeouts" :> ReqBody '[WaargJSON WDJson] Timeout :> Post '[] NoContent)
-  
-    :<|> ("title" :> Get '[WaargJSON WDJson] Text)
-  
-    :<|> ("url" :> Get '[WaargJSON WDJson] (Value WDUri))
-    :<|> ("url" :> ReqBody '[WaargJSON WDJson] WDUri :> Post '[WaargJSON WDJson] (Value ()))
-  
-    :<|> ("window" :> "fullscreen" :> Post '[WaargJSON WDJson] Json)
-    :<|> ("window" :> "handles" :> Get '[WaargJSON WDJson] (Vector Text))
-    :<|> ("window" :> "maximize" :> Post '[WaargJSON WDJson] Json)
-    :<|> ("window" :> "minimize" :> Post '[WaargJSON WDJson] Json)
-    :<|> ("window" :> "new" :> ReqBody '[WaargJSON WDJson] CreateWindow :> Post '[WaargJSON WDJson] (Value NewWindow))
-    :<|> ("window" :> "rect" :> Get '[WaargJSON WDJson] Json)
-    :<|> ("window" :> "rect" :> ReqBody '[WaargJSON WDJson] SetWindowRect :> Post '[WaargJSON WDJson] Json)
-    :<|> ("window" :> Delete '[] NoContent)
-    :<|> ("window" :> Get '[WaargJSON WDJson] (Value WindowHandle))
-    :<|> ("window" :> ReqBody '[WaargJSON WDJson] SwitchToWindow :> Post '[] NoContent)
-  
-    :<|> (Delete '[] NoContent)
-    )
+         (ReqBody '[WaargJSON WDJson] NewSession :> Post '[WaargJSON WDJson] (Value Session))
+    :<|> Capture "sessionId" SessionId :> WithSessionAPI
   )
+
+type WithSessionAPI
+  =    ("actions" :> Delete '[] NoContent)
+  :<|> ("actions" :> ReqBody '[WaargJSON WDJson] PerformActions :> Post '[] NoContent)
+
+  :<|> ("alert" :> "accept" :> Post '[] NoContent)
+  :<|> ("alert" :> "dismiss" :> Post '[] NoContent)
+  :<|> ("alert" :> "text" :> Get '[WaargJSON WDJson] Text)
+  :<|> ("alert" :> "text" :> ReqBody '[WaargJSON WDJson] SendAlertText :> Post '[] NoContent)
+
+  :<|> ("back" :> Post '[] NoContent)
+
+  :<|> ("cookie" :> Capture "name" Text :> Delete '[] NoContent)
+  :<|> ("cookie" :> Capture "name" Text :> Get '[WaargJSON WDJson] Json)
+  :<|> ("cookie" :> Delete '[] NoContent)
+  :<|> ("cookie" :> Get '[WaargJSON WDJson] (Vector Json))
+  :<|> ("cookie" :> ReqBody '[WaargJSON WDJson] AddCookie :> Post '[] NoContent)
+
+  :<|> ("element" :> "active" :> Post '[WaargJSON WDJson] (Value ElementId))
+  :<|> ("element" :> Capture "elementId" ElementId :> "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Value Text))
+  :<|> ("element" :> Capture "elementId" ElementId :> "clear" :> Post '[] NoContent)
+  :<|> ("element" :> Capture "elementId" ElementId :> "click" :> Post '[] NoContent)
+  :<|> ("element" :> Capture "elementId" ElementId :> "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] (Value Text))
+  :<|> ("element" :> Capture "elementId" ElementId :> "displayed" :> Get '[WaargJSON WDJson] (Value Bool))
+  :<|> ("element" :> Capture "elementId" ElementId :> "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value ElementId))
+  :<|> ("element" :> Capture "elementId" ElementId :> "elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value (Vector ElementId)))
+  :<|> ("element" :> Capture "elementId" ElementId :> "enabled" :> Get '[WaargJSON WDJson] (Value Bool))
+  :<|> ("element" :> Capture "elementId" ElementId :> "name" :> Get '[WaargJSON WDJson] (Value Text))
+  :<|> ("element" :> Capture "elementId" ElementId :> "property" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Value Text))
+  :<|> ("element" :> Capture "elementId" ElementId :> "rect" :> Get '[WaargJSON WDJson] (Value Json))
+  :<|> ("element" :> Capture "elementId" ElementId :> "screenshot" :> ReqBody '[WaargJSON WDJson] TakeElementScreenshot :> Get '[WaargJSON WDJson] (Value Text))
+  :<|> ("element" :> Capture "elementId" ElementId :> "selected" :> Get '[WaargJSON WDJson] (Value Bool))
+  :<|> ("element" :> Capture "elementId" ElementId :> "text" :> Get '[WaargJSON WDJson] (Value Text))
+  :<|> ("element" :> Capture "elementId" ElementId :> "value" :> ReqBody '[WaargJSON WDJson] ElementSendKeys :> Post '[] NoContent)
+
+  :<|> ("element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value ElementId))
+  :<|> ("elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value (Vector ElementId)))
+
+  :<|> ("execute" :> "async" :> ReqBody '[WaargJSON WDJson] ExecuteAsyncScript :> Post '[WaargJSON WDJson] Json)
+  :<|> ("execute" :> "sync" :> ReqBody '[WaargJSON WDJson] ExecuteScript :> Post '[WaargJSON WDJson] Json)
+
+  :<|> ("forward" :> Post '[] NoContent)
+
+  :<|> ("frame" :> "parent" :> Post '[] NoContent)
+  :<|> ("frame" :> ReqBody '[WaargJSON WDJson] SwitchToFrame :> Post '[] NoContent)
+
+  :<|> ("refresh" :> Post '[] NoContent)
+
+  :<|> ("screenshot" :> Get '[WaargJSON WDJson] Text)
+
+  :<|> ("source" :> Get '[] NoContent)
+
+  :<|> ("timeouts" :> Get '[WaargJSON WDJson] Json)
+  :<|> ("timeouts" :> ReqBody '[WaargJSON WDJson] Timeout :> Post '[] NoContent)
+
+  :<|> ("title" :> Get '[WaargJSON WDJson] Text)
+
+  :<|> ("url" :> Get '[WaargJSON WDJson] (Value WDUri))
+  :<|> ("url" :> ReqBody '[WaargJSON WDJson] WDUri :> Post '[WaargJSON WDJson] (Value ()))
+
+  :<|> ("window" :> "fullscreen" :> Post '[WaargJSON WDJson] Json)
+  :<|> ("window" :> "handles" :> Get '[WaargJSON WDJson] (Vector Text))
+  :<|> ("window" :> "maximize" :> Post '[WaargJSON WDJson] Json)
+  :<|> ("window" :> "minimize" :> Post '[WaargJSON WDJson] Json)
+  :<|> ("window" :> "new" :> ReqBody '[WaargJSON WDJson] CreateWindow :> Post '[WaargJSON WDJson] (Value NewWindow))
+  :<|> ("window" :> "rect" :> Get '[WaargJSON WDJson] Json)
+  :<|> ("window" :> "rect" :> ReqBody '[WaargJSON WDJson] SetWindowRect :> Post '[WaargJSON WDJson] Json)
+  :<|> ("window" :> Delete '[] NoContent)
+  :<|> ("window" :> Get '[WaargJSON WDJson] (Value WindowHandle))
+  :<|> ("window" :> ReqBody '[WaargJSON WDJson] SwitchToWindow :> Post '[] NoContent)
+
+  :<|> (Delete '[] NoContent)
 
 webdriverApi :: Proxy WebDriverAPI
 webdriverApi = Proxy
@@ -153,7 +153,7 @@ data InSession = InSession
   , refresh                 :: ClientM NoContent
   , takeScreenshot          :: ClientM Text
   , getPageSource           :: ClientM NoContent
-  , getTimeouts             :: ClientM Json 
+  , getTimeouts             :: ClientM Json
   , setTimeouts             :: Timeout -> ClientM NoContent
   , getTitle                :: ClientM Text
   , getUrl                  :: ClientM (Value WDUri)
@@ -177,11 +177,10 @@ data WDApi = WDApi
   , withSession :: SessionId -> InSession
   }
 
-mkWDApi :: WDApi
 mkWDApi = WDApi {..}
   where
     status :<|> newSession :<|> needsSessionId =
-      client webdriverApi
+      C.client webdriverApi
 
     withSession sessId = InSession {..}
       where

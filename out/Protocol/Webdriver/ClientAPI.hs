@@ -26,6 +26,8 @@ module Protocol.Webdriver.ClientAPI
   , defaultWebdriverClient
   ) where
 
+-- import Protocol.Webdriver.ClientAPI.GENERICS ()
+
 import           Data.Proxy                                          (Proxy (..))
 import           Data.Text                                           (Text)
 import           Data.Vector                                         (Vector)
