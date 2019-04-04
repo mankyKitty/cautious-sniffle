@@ -43,19 +43,17 @@ import qualified Protocol.Webdriver.ClientAPI.Types.Session      as W
 import           Commands
 import           Types
 
-htmlunitSession :: W.NewSession
-htmlunitSession =
-  W.NewSession
-    -- (W.singleton W.BrowserName (pure W.HtmlUnit))  -- Browser config
-    (W.asHeadless W.chrome)
-    Nothing                                        -- username
-    Nothing                                        -- password
+session :: W.NewSession
+session = W.NewSession
+  (W.asHeadless W.chrome)       -- Browser
+  Nothing                       -- username
+  Nothing                       -- password
 
 webdriverStateTest
   :: WDRun (PropertyT IO)
   -> W.Session
   -> Property
-webdriverStateTest runner sess = withTests 5 . property $ do
+webdriverStateTest runner sess = withTests 1 . property $ do
   let
     initialModel = Model
       False
@@ -70,7 +68,7 @@ webdriverStateTest runner sess = withTests 5 . property $ do
       , mk cSendKeys
       ]
 
-  actions <- forAll $ Gen.sequential (Range.linear 1 10) initialModel commands
+  actions <- forAll $ Gen.sequential (Range.linear 3 10) initialModel commands
   executeSequential initialModel actions
 
 main :: IO Bool
@@ -97,7 +95,7 @@ main = do
 
   bracket startSeleniumAndWebServer stopSeleniumAndWebServer .
     const $ do
-      sess <- either (error . show) (pure . W.unValue) =<< runForEither (W.newSession htmlunitSession)
+      sess <- either (error . show) (pure . W.unValue) =<< runForEither (W.newSession session)
       b <- checkSequential $ Group "WebDriver Tests" [
         ("Webdriver command sequences", webdriverStateTest runner sess)
         ]

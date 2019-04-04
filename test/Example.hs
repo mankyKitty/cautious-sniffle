@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeApplications  #-}
 module Main where
 
-import           Control.Monad                                           (void)
+import           Control.Monad                                           (void,unless)
 import           Data.Function                                           ((&))
 import qualified Data.Text.IO                                            as TIO
 import qualified Data.Text.Lazy                                          as T
@@ -32,6 +32,8 @@ import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
 
+import qualified Protocol.Webdriver.ClientAPI.Record as F
+
 baseUrl :: C.BaseUrl
 baseUrl = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
 
@@ -54,19 +56,49 @@ printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
+usingSession :: F.InSession -> C.ClientM ()
+usingSession F.InSession {..} = do
+  let
+    buttonId = "newButtonName"
+    textInputValue = "Fred"
+
+  _         <- navigateTo (WD.WDUri url)
+  textInput <- findElement . WD.ByCss $ input # byId buttonId
+  _         <- elementSendKeys (unValue textInput) $ WD.ElementSendKeys textInputValue
+
+  attr     <- getElementAttribute (unValue textInput) "id"
+  unless (unValue attr == buttonId) $ error "attribute mismatch"
+
+  prop     <- getElementProperty (unValue textInput) "value"
+  unless (unValue prop == textInputValue) $ error "text input value mismatch"
+
+  void $ deleteSession
+
 qry :: C.ClientM ()
 qry = do
+  let api = F.mkWDApi
   url <- URI.mkURI "http://uitestingplayground.com/textinput"
 
-  sess <- WD.newSession (newSess $ WD.singleton WD.BrowserName (pure WD.HtmlUnit))
+  sess <- F.newSession api (newSess firefox)
 
-  let sid = WD._sessionId $ unValue sess
+  let
+    sid = WD._sessionId $ unValue sess
+    currSess = F.withSession api sid
 
-  _         <- WD.navigateTo sid (WD.WDUri url)
-  textInput <- WD.findElement sid . WD.ByCss $ input # byId "newButtonName"
-  _         <- WD.elementSendKeys sid (unValue textInput) $ WD.ElementSendKeys "Fred"
+    buttonId = "newButtonName"
+    textInputValue = "Fred"
 
-  void $ WD.deleteSession sid
+  _         <- F.navigateTo currSess (WD.WDUri url)
+  textInput <- F.findElement currSess . WD.ByCss $ input # byId buttonId
+  _         <- F.elementSendKeys currSess (unValue textInput) $ WD.ElementSendKeys textInputValue
+
+  attr     <- F.getElementAttribute currSess (unValue textInput) "id"
+  unless (unValue attr == buttonId) $ error "attribute mismatch"
+
+  prop     <- F.getElementProperty currSess (unValue textInput) "value"
+  unless (unValue prop == textInputValue) $ error "text input value mismatch"
+
+  void $ F.deleteSession currSess
 
 main :: IO ()
 main = do

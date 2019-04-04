@@ -2,24 +2,27 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-missing-signatures#-}
 module Protocol.Webdriver.ClientAPI
-  (
-  -- * API Actions
-  releaseActions, performActions, acceptAlert, dismissAlert,
-  getAlertText, sendAlertText, back, deleteCookie, getNamedCookie,
-  deleteAllCookies, getAllCookies, addCookie, getActiveElement,
-  getElementAttribute, elementClear, elementClick,
-  getElementCSSValue, isElementDisplayed, findElementFromElement,
-  findElementsFromElement, isElementEnabled, getElementTagName,
-  getElementProperty, getElementRect, takeElementScreenshot,
-  isElementSelected, getElementText, elementSendKeys, findElement,
-  findElements, executeAsyncScript, executeScript, forward,
-  switchToParentFrame, switchToFrame, refresh, takeScreenshot,
-  getPageSource, getTimeouts, setTimeouts, getTitle, getUrl,
-  navigateTo, fullscreenWindow, getWindowHandles, maximizeWindow,
-  minimizeWindow, createWindow, getWindowRect, setWindowRect,
-  closeWindow, getWindowHandle, switchToWindow, deleteSession,
-  newSession, status
-  -- * Helpers
+  ( -- * API Type
+    WebDriverAPI
+    -- * API Proxy
+  , webdriverApi
+    -- * API Actions
+  , releaseActions, performActions, acceptAlert, dismissAlert,
+    getAlertText, sendAlertText, back, deleteCookie, getNamedCookie,
+    deleteAllCookies, getAllCookies, addCookie, getActiveElement,
+    getElementAttribute, elementClear, elementClick,
+    getElementCSSValue, isElementDisplayed, findElementFromElement,
+    findElementsFromElement, isElementEnabled, getElementTagName,
+    getElementProperty, getElementRect, takeElementScreenshot,
+    isElementSelected, getElementText, elementSendKeys, findElement,
+    findElements, executeAsyncScript, executeScript, forward,
+    switchToParentFrame, switchToFrame, refresh, takeScreenshot,
+    getPageSource, getTimeouts, setTimeouts, getTitle, getUrl,
+    navigateTo, fullscreenWindow, getWindowHandles, maximizeWindow,
+    minimizeWindow, createWindow, getWindowRect, setWindowRect,
+    closeWindow, getWindowHandle, switchToWindow, deleteSession,
+    newSession, status
+    -- * Helpers
   , defaultWebdriverClient
   ) where
 
@@ -61,16 +64,16 @@ type WebDriverAPI =
   :<|> ("session" :> Capture "sessionId" SessionId :> "cookie" :> ReqBody '[WaargJSON WDJson] AddCookie :> Post '[] NoContent)
 
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> "active" :> Post '[WaargJSON WDJson] (Value ElementId))
-  :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] Text)
+  :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Value Text))
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "clear" :> Post '[] NoContent)
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "click" :> Post '[] NoContent)
-  :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] Text)
+  :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] (Value Text))
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "displayed" :> Get '[WaargJSON WDJson] Bool)
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value ElementId))
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Value (Vector ElementId)))
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "enabled" :> Get '[WaargJSON WDJson] Bool)
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "name" :> Get '[WaargJSON WDJson] Text)
-  :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "property" :> Capture "name" Text :> Get '[WaargJSON WDJson] Text)
+  :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "property" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Value Text))
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "rect" :> Get '[WaargJSON WDJson] Json)
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "screenshot" :> ReqBody '[WaargJSON WDJson] TakeElementScreenshot :> Get '[WaargJSON WDJson] Text)
   :<|> ("session" :> Capture "sessionId" SessionId :> "element" :> Capture "elementId" ElementId :> "selected" :> Get '[WaargJSON WDJson] Bool)

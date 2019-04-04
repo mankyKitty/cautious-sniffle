@@ -27,8 +27,8 @@ mkDerivation {
   ];
   testHaskellDepends = [
     base clay containers dependent-map dependent-sum hedgehog
-    http-client lens modern-uri process scotty servant-client text
-    vector waargonaut webdriver
+    http-client lens modern-uri mtl process scotty servant
+    servant-client text vector waargonaut webdriver
   ];
   doHaddock = false;
   license = "unknown";
