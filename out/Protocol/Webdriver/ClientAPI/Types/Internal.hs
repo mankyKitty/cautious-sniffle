@@ -51,14 +51,14 @@ withString = withA D.string
 withText :: Monad f => (Text -> Either Text a) -> D.Decoder f a
 withText = withA D.text
 
-encodeShowToLower :: (Show a, Applicative f) => E.Encoder f a
-encodeShowToLower = T.toLower . T.pack . show >$< E.text
-
 decodeFromReadUCFirst :: (Read a, Monad f) => Text -> D.Decoder f a
 decodeFromReadUCFirst l = withString (note l . readMaybe . over _head C.toUpper)
 
 encodeToLower :: Applicative f => (a -> String) -> E.Encoder f a
 encodeToLower f = T.toLower . T.pack . f >$< E.text
+
+encodeShowToLower :: (Show a, Applicative f) => E.Encoder f a
+encodeShowToLower = encodeToLower show
 
 singleValueObj :: Applicative f => Text -> E.Encoder' a -> E.Encoder f a
 singleValueObj k = E.mapLikeObj . E.atKey' k

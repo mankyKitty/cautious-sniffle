@@ -75,7 +75,7 @@ usingSession G.SessionAPI {..} = do
   prop     <- getElementProperty (unValue textInput) "value"
   unless (unValue prop == textInputValue) $ error "text input value mismatch"
 
-  void $ deleteSession
+  void deleteSession
 
 usingGenerics :: C.ClientM ()
 usingGenerics = G.newSession G.wdClient (newSess firefox)
