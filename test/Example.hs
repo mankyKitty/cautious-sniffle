@@ -1,10 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeApplications  #-}
 module Main where
 
-import           Control.Monad                                           (void,unless)
+import           Control.Monad                                           (unless,
+                                                                          void)
 import           Data.Function                                           ((&))
 import qualified Data.Text.IO                                            as TIO
 import qualified Data.Text.Lazy                                          as T
@@ -32,8 +33,7 @@ import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
 
-import qualified Protocol.Webdriver.ClientAPI.GENERICS as G
-import qualified Protocol.Webdriver.ClientAPI.Record as F
+import qualified Protocol.Webdriver.ClientAPI.GENERICS                   as G
 
 baseUrl :: C.BaseUrl
 baseUrl = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
@@ -46,7 +46,7 @@ firefox = WD.firefox
     ffSettings = mempty
         -- I needed to add this as Mozilla removed this setting but my
         -- geckdriver keeps trying to set it to an invalid value and Marionette
-        -- crashes, leaving the selenium hanging. :<
+        -- crashes. :<
       & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
       & FF.FFArgs ~=> ["--headless"]
 
@@ -57,8 +57,8 @@ printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
-usingSession :: G.SessionClient -> C.ClientM ()
-usingSession G.SessionAPI {..} = do
+usingSession :: WD.SessionId -> G.SessionClient -> C.ClientM ()
+usingSession sessId G.SessionAPI {..} = do
   let
     buttonId = "newButtonName"
     textInputValue = "Fred"
@@ -66,20 +66,26 @@ usingSession G.SessionAPI {..} = do
   url <- URI.mkURI "http://uitestingplayground.com/textinput"
 
   _         <- navigateTo (WD.WDUri url)
-  textInput <- findElement . WD.ByCss $ input # byId buttonId
-  _         <- elementSendKeys (unValue textInput) $ WD.ElementSendKeys textInputValue
 
-  attr     <- getElementAttribute (unValue textInput) "id"
+  textInput <- fmap (G.elementClient sessId . unValue) . findElement
+    . WD.ByCss $ input # byId buttonId
+
+  _         <- G.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
+
+  attr     <- G.getElementAttribute textInput "id"
   unless (unValue attr == buttonId) $ error "attribute mismatch"
 
-  prop     <- getElementProperty (unValue textInput) "value"
+  prop     <- G.getElementProperty textInput "value"
   unless (unValue prop == textInputValue) $ error "text input value mismatch"
 
   void deleteSession
 
 usingGenerics :: C.ClientM ()
-usingGenerics = G.newSession G.wdClient (newSess firefox)
-  >>= usingSession . G.withSessionClient . WD._sessionId . unValue
+usingGenerics = G.newSession G.wdClient (newSess firefox) >>= \s ->
+  let
+    sid = WD._sessionId (unValue s)
+  in
+    usingSession sid (G.sessionClient sid)
 
 main :: IO ()
 main = do

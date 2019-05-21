@@ -1,11 +1,10 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE DeriveGeneric    #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE TypeOperators    #-}
 {-# OPTIONS_GHC -Wno-missing-signatures#-}
-
-{-# LANGUAGE UndecidableInstances #-}
-module Protocol.Webdriver.ClientAPI.GENERICS 
+module Protocol.Webdriver.ClientAPI.GENERICS
   ( -- * Types
     WebDriverAPI (..)
   , WindowClient
@@ -24,28 +23,27 @@ module Protocol.Webdriver.ClientAPI.GENERICS
   , module Protocol.Webdriver.ClientAPI.SessionAPI
   ) where
 
-import qualified GHC.Generics                                        as GHC
+import qualified GHC.Generics                                 as GHC
 
-import           Data.Proxy                                          (Proxy (..))
-import           Protocol.Webdriver.ClientAPI.Types.ElementId        (ElementId)
-import           Protocol.Webdriver.ClientAPI.Types.Internal         (Value,
-                                                                      WDJson)
-import           Protocol.Webdriver.ClientAPI.Types.Session          (NewSession,
-                                                                      Session,
-                                                                      SessionId)
+import           Data.Proxy                                   (Proxy (..))
+import           Protocol.Webdriver.ClientAPI.Types.ElementId (ElementId)
+import           Protocol.Webdriver.ClientAPI.Types.Internal  (Value, WDJson)
+import           Protocol.Webdriver.ClientAPI.Types.Session   (NewSession,
+                                                               Session,
+                                                               SessionId)
 
 import           Servant.API
-import           Servant.API.ContentTypes.Waargonaut                 (WaargJSON)
+import           Servant.API.ContentTypes.Waargonaut          (WaargJSON)
 
-import           Servant.Client                                      (ClientM)
-import qualified Servant.Client                                      as C
+import           Servant.Client                               (ClientM)
+import qualified Servant.Client                               as C
 
-import           Waargonaut.Types.Json                               (Json)
+import           Waargonaut.Types.Json                        (Json)
 
 import           Protocol.Webdriver.ClientAPI.SessionAPI
 
 import           Servant.API.Generic
-import           Servant.Client.Generic                              (AsClientT)
+import           Servant.Client.Generic                       (AsClientT)
 
 data WebDriverAPI route = WebDriverAPI
   { getStatus   :: route :- "status" :> Get '[WaargJSON WDJson] Json
@@ -55,7 +53,7 @@ data WebDriverAPI route = WebDriverAPI
   deriving GHC.Generic
 
 apiProxy :: Proxy (ToServantApi WebDriverAPI)
-apiProxy = Proxy
+apiProxy = genericApi (Proxy @WebDriverAPI)
 
 type WindowClient = WindowAPI (AsClientT ClientM)
 type ElementClient = ElementAPI (AsClientT ClientM)

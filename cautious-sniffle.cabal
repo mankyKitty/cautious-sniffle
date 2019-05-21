@@ -131,6 +131,7 @@ test-suite wd-tests
                      , http-client
                      , servant
                      , servant-client
+                     , servant-client-core >= 0.14
                      , waargonaut >= 0.6 && < 0.7
                      , vector
                      , dependent-map
@@ -166,7 +167,6 @@ test-suite example
                      , dependent-sum
                      , clay
                      , modern-uri
-                     , mtl
 
   type:                exitcode-stdio-1.0
 

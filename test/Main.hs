@@ -35,7 +35,8 @@ import           Hedgehog                                        (Group (..),
 import qualified Hedgehog.Gen                                    as Gen
 import qualified Hedgehog.Range                                  as Range
 
-import qualified Protocol.Webdriver.ClientAPI                    as W
+import qualified Protocol.Webdriver.ClientAPI.GENERICS           as W
+import qualified Protocol.Webdriver.ClientAPI                    as WUT
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Internal     as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Session      as W
@@ -51,16 +52,17 @@ session = W.NewSession
 
 webdriverStateTest
   :: WDRun (PropertyT IO)
-  -> W.Session
+  -> Sess
   -> Property
 webdriverStateTest runner sess = withTests 1 . property $ do
   let
     initialModel = Model
       False
       Nothing
+      Nothing
 
     mk c =
-      c runner (W._sessionId sess)
+      c runner sess
 
     commands =
       [ mk cFindElement
@@ -73,8 +75,7 @@ webdriverStateTest runner sess = withTests 1 . property $ do
 
 main :: IO Bool
 main = do
-  env <- flip Servant.mkClientEnv W.defaultWebdriverClient
-    <$> HTTP.newManager HTTP.defaultManagerSettings
+  env <- flip Servant.mkClientEnv WUT.defaultWebdriverClient <$> HTTP.newManager HTTP.defaultManagerSettings
 
   let
     stopSeleniumAndWebServer (web, sel) = do
@@ -93,14 +94,18 @@ main = do
     runner =
       WDRun (runWDAction env) (evalIO . runForEither)
 
-  bracket startSeleniumAndWebServer stopSeleniumAndWebServer .
-    const $ do
-      sess <- either (error . show) (pure . W.unValue) =<< runForEither (W.newSession session)
-      b <- checkSequential $ Group "WebDriver Tests" [
-        ("Webdriver command sequences", webdriverStateTest runner sess)
-        ]
-      void $ runForEither (W.deleteSession (W._sessionId sess))
-      pure b
+  bracket startSeleniumAndWebServer stopSeleniumAndWebServer . const $ do
+    sessD <- either (error . show) (pure . W.unValue) =<< runForEither (W.newSession W.wdClient session)
+
+    let
+      sessId = W._sessionId sessD
+      sess = Sess sessId (W.sessionClient sessId)
+
+    b <- checkSequential $ Group "WebDriver Tests" [
+      ("Webdriver command sequences", webdriverStateTest runner sess)
+      ]
+    void $ runForEither (W.deleteSession (_sessClient sess))
+    pure b
 
 runWDAction
   :: ( MonadIO m

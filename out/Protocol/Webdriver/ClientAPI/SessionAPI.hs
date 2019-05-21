@@ -1,8 +1,8 @@
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
 module Protocol.Webdriver.ClientAPI.SessionAPI
   ( SessionAPI (..)
   , ElementAPI (..)
@@ -49,7 +49,7 @@ data ElementAPI route = ElementAPI
   deriving GHC.Generic
 
 elemApi :: Proxy (ToServantApi ElementAPI)
-elemApi = Proxy
+elemApi = genericApi (Proxy @ElementAPI)
 
 data WindowAPI route = WindowAPI
   { fullscreenWindow        :: route :- "fullscreen" :> Post '[WaargJSON WDJson] Json
@@ -62,11 +62,11 @@ data WindowAPI route = WindowAPI
   , closeWindow             :: route :- Delete '[] NoContent
   , getWindowHandle         :: route :- Get '[WaargJSON WDJson] (Value WindowHandle)
   , switchToWindow          :: route :- ReqBody '[WaargJSON WDJson] SwitchToWindow :> Post '[] NoContent
-  } 
+  }
   deriving GHC.Generic
 
 windowApi :: Proxy (ToServantApi WindowAPI)
-windowApi = Proxy
+windowApi = genericApi (Proxy @WindowAPI)
 
 data SessionAPI route = SessionAPI
   { releaseActions          :: route :- "actions" :> Delete '[] NoContent
@@ -104,4 +104,4 @@ data SessionAPI route = SessionAPI
   deriving GHC.Generic
 
 sessionApi :: Proxy (ToServantApi SessionAPI)
-sessionApi = Proxy
+sessionApi = genericApi (Proxy @SessionAPI)

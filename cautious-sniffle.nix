@@ -4,8 +4,8 @@
 , errors, generics-sop, haskell-src-exts, hedgehog, http-client
 , lens, modern-uri, mtl, natural, pretty, process, scientific
 , scotty, semigroupoids, servant, servant-client
-, servant-waargonaut, stdenv, template-haskell, text, vector
-, waargonaut, webdriver
+, servant-client-core, servant-waargonaut, stdenv, template-haskell
+, text, vector, waargonaut, webdriver
 }:
 mkDerivation {
   pname = "cautious-sniffle";
@@ -19,16 +19,16 @@ mkDerivation {
     dependent-sum-template distributive errors generics-sop
     haskell-src-exts hedgehog http-client lens modern-uri mtl natural
     pretty scientific semigroupoids servant servant-client
-    servant-waargonaut template-haskell text vector waargonaut
-    webdriver
+    servant-client-core servant-waargonaut template-haskell text vector
+    waargonaut webdriver
   ];
   executableHaskellDepends = [
     base bytestring directory lens text waargonaut
   ];
   testHaskellDepends = [
     base clay containers dependent-map dependent-sum hedgehog
-    http-client lens modern-uri mtl process scotty servant
-    servant-client text vector waargonaut webdriver
+    http-client lens modern-uri process scotty servant servant-client
+    text vector waargonaut webdriver
   ];
   doHaddock = false;
   license = "unknown";
