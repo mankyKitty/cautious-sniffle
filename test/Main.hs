@@ -68,6 +68,7 @@ webdriverStateTest runner sess = withTests 1 . property $ do
       [ mk cFindElement
       , mk cNavigateTo
       , mk cSendKeys
+      , mk cCheckSentKeys
       ]
 
   actions <- forAll $ Gen.sequential (Range.linear 3 10) initialModel commands
