@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-missing-signatures#-}
+
 module Protocol.Webdriver.ClientAPI
+  {-# DEPRECATED "Use Protocol.Webdriver.ClientAPI.GENERICS & Protocol.Webdriver.ClientAPI.SessionAPI instead" #-}
   ( -- * API Type
     WebDriverAPI
     -- * API Proxy
@@ -26,8 +28,6 @@ module Protocol.Webdriver.ClientAPI
   , defaultWebdriverClient
   ) where
 
--- import Protocol.Webdriver.ClientAPI.GENERICS ()
-
 import           Data.Proxy                                          (Proxy (..))
 import           Data.Text                                           (Text)
 import           Data.Vector                                         (Vector)
@@ -42,7 +42,9 @@ import           Protocol.Webdriver.ClientAPI.Types.Session          (NewSession
 import           Protocol.Webdriver.ClientAPI.Types.Timeout          (Timeout)
 import           Servant.API
 import           Servant.API.ContentTypes.Waargonaut                 (WaargJSON)
-import           Servant.Client
+import           Servant.Client                                      (BaseUrl (..),
+                                                                      Scheme (Http),
+                                                                      client)
 import           Waargonaut.Types.Json                               (Json)
 
 defaultWebdriverClient :: BaseUrl

@@ -39,7 +39,7 @@ import           Hedgehog                                            (Callback (
 import qualified Hedgehog.Gen                                        as Gen
 import qualified Hedgehog.Range                                      as Range
 
-import qualified Protocol.Webdriver.ClientAPI.GENERICS               as W
+import qualified Protocol.Webdriver.ClientAPI                        as W
 import qualified Protocol.Webdriver.ClientAPI.Types                  as W
 import           Protocol.Webdriver.ClientAPI.Types.Internal         as W
 import qualified Protocol.Webdriver.ClientAPI.Types.LocationStrategy as W
@@ -141,7 +141,7 @@ cFindElement
   => WDRun m
   -> Sess
   -> Command g m Model
-cFindElement run sess=
+cFindElement run sessApi =
   let
     readyFindElem m = m ^. modelAtUrl && isNothing (_modelElementApi m)
 
@@ -151,9 +151,9 @@ cFindElement run sess=
     exec :: Cmd GetTextInput Concrete -> m (Opaque (W.ElementAPI (AsClientT ClientM)))
     exec (Cmd (GetTextInput inpId)) = runOrFail run
       $ Opaque
-      . W.elementClient (_sessId sess)
+      . W.elementClient (sessApi ^. sessId)
       . W.unValue
-      <$> W.findElement (_sessClient sess) (W.ByCss (input # byId inpId))
+      <$> W.findElement (sessApi ^. sessClient) (W.ByCss (input # byId inpId))
 
   in
     Command gen exec
@@ -170,7 +170,7 @@ cNavigateTo
   => WDRun m
   -> Sess
   -> Command g m Model
-cNavigateTo run sess =
+cNavigateTo run sessApi =
   let
     gen :: Model Symbolic -> Maybe (g (Cmd LoadUrl Symbolic))
     gen m = if m ^. modelAtUrl . to not
@@ -179,8 +179,8 @@ cNavigateTo run sess =
 
     exec :: Cmd LoadUrl Concrete -> m W.WDUri
     exec (Cmd (LoadUrl page)) = runOrFail run $ do
-      _ <- W.navigateTo (_sessClient sess) (W.WDUri page)
-      W.unValue <$> W.getUrl (_sessClient sess)
+      _ <- W.navigateTo (sessApi ^. sessClient) (W.WDUri page)
+      W.unValue <$> W.getUrl (sessApi ^. sessClient)
   in
     Command gen exec
       [ Require $ \m _                                -> not $ _modelAtUrl m

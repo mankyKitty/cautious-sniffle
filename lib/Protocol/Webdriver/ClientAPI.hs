@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies     #-}
 {-# LANGUAGE TypeOperators    #-}
 {-# OPTIONS_GHC -Wno-missing-signatures#-}
-module Protocol.Webdriver.ClientAPI.GENERICS
+module Protocol.Webdriver.ClientAPI
   ( -- * Types
     WebDriverAPI (..)
   , WindowClient
@@ -18,6 +18,9 @@ module Protocol.Webdriver.ClientAPI.GENERICS
   , sessionClient
   , elementClient
   , wdClient
+
+    -- * Helpers
+  , defaultWebdriverClient
 
     -- * Re-exports
   , module Protocol.Webdriver.ClientAPI.SessionAPI
@@ -35,7 +38,7 @@ import           Protocol.Webdriver.ClientAPI.Types.Session   (NewSession,
 import           Servant.API
 import           Servant.API.ContentTypes.Waargonaut          (WaargJSON)
 
-import           Servant.Client                               (ClientM)
+import           Servant.Client                               (ClientM, BaseUrl)
 import qualified Servant.Client                               as C
 
 import           Waargonaut.Types.Json                        (Json)
@@ -72,3 +75,6 @@ sessionClient sessionId = fromServant $ withSession wdClient sessionId
 
 wdClient :: WebDriverAPI (AsClientT ClientM)
 wdClient = fromServant $ C.client apiProxy
+
+defaultWebdriverClient :: BaseUrl
+defaultWebdriverClient = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"

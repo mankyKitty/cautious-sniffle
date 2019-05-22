@@ -20,6 +20,3 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
-level0*/*app_db.db
-level0*/result
-test/ed*txt

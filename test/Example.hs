@@ -33,7 +33,7 @@ import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
 
-import qualified Protocol.Webdriver.ClientAPI.GENERICS                   as G
+import qualified Protocol.Webdriver.ClientAPI                            as G
 
 baseUrl :: C.BaseUrl
 baseUrl = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"

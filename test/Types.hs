@@ -26,7 +26,7 @@ import           Servant.Client.Generic                       (AsClientT)
 import           Hedgehog                                     (MonadTest,
                                                                Opaque, Var)
 
-import           Protocol.Webdriver.ClientAPI.GENERICS        (ElementAPI,
+import           Protocol.Webdriver.ClientAPI                 (ElementAPI,
                                                                SessionAPI)
 import           Protocol.Webdriver.ClientAPI.Types.Session   (SessionId)
 

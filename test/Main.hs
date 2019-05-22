@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import System.IO (openTempFile)
+import           System.IO                                       (openTempFile)
 import qualified System.Process                                  as Proc
 
 import           Control.Concurrent                              (forkIO,
@@ -35,8 +35,7 @@ import           Hedgehog                                        (Group (..),
 import qualified Hedgehog.Gen                                    as Gen
 import qualified Hedgehog.Range                                  as Range
 
-import qualified Protocol.Webdriver.ClientAPI.GENERICS           as W
-import qualified Protocol.Webdriver.ClientAPI                    as WUT
+import qualified Protocol.Webdriver.ClientAPI                    as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Internal     as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Session      as W
@@ -54,7 +53,7 @@ webdriverStateTest
   :: WDRun (PropertyT IO)
   -> Sess
   -> Property
-webdriverStateTest runner sess = withTests 1 . property $ do
+webdriverStateTest runner sessApi = withTests 1 . property $ do
   let
     initialModel = Model
       False
@@ -62,7 +61,7 @@ webdriverStateTest runner sess = withTests 1 . property $ do
       Nothing
 
     mk c =
-      c runner sess
+      c runner sessApi
 
     commands =
       [ mk cFindElement
@@ -76,7 +75,7 @@ webdriverStateTest runner sess = withTests 1 . property $ do
 
 main :: IO Bool
 main = do
-  env <- flip Servant.mkClientEnv WUT.defaultWebdriverClient <$> HTTP.newManager HTTP.defaultManagerSettings
+  env <- flip Servant.mkClientEnv W.defaultWebdriverClient <$> HTTP.newManager HTTP.defaultManagerSettings
 
   let
     stopSeleniumAndWebServer (web, sel) = do
@@ -96,16 +95,21 @@ main = do
       WDRun (runWDAction env) (evalIO . runForEither)
 
   bracket startSeleniumAndWebServer stopSeleniumAndWebServer . const $ do
-    sessD <- either (error . show) (pure . W.unValue) =<< runForEither (W.newSession W.wdClient session)
+    sessD <- runForEither (W.newSession W.wdClient session)
+      >>= either (error . show) (pure . W.unValue)
 
     let
-      sessId = W._sessionId sessD
-      sess = Sess sessId (W.sessionClient sessId)
+      sId = W._sessionId sessD
+      sCli = W.sessionClient sId
+
+      sessApi = Sess sId sCli
 
     b <- checkSequential $ Group "WebDriver Tests" [
-      ("Webdriver command sequences", webdriverStateTest runner sess)
+      ("Webdriver command sequences", webdriverStateTest runner sessApi)
       ]
-    void $ runForEither (W.deleteSession (_sessClient sess))
+
+    void $ runForEither (W.deleteSession sCli)
+
     pure b
 
 runWDAction
