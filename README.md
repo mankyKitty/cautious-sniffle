@@ -1,9 +1,9 @@
 # Cautious Sniffle
 
 [W3C Webdriver Protocol](https://w3c.github.io/webdriver/) bindings for Haskell.
-[Using `servant-client` to generate all the functions for us. This library
-[defines the API types and their related protocol types, along with their
-[respective JSON encoding/decoding requirements.
+Using `servant-client` to generate all the functions for us. This library
+defines the API types and their related protocol types, along with their
+respective JSON encoding/decoding requirements.
 
 Looking for help to get this pushed over the line!! :) 
 
