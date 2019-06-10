@@ -141,7 +141,7 @@ cFindElement
   => WDRun m
   -> Sess
   -> Command g m Model
-cFindElement run sessApi =
+cFindElement run (Sess sId sCli) =
   let
     readyFindElem m = m ^. modelAtUrl && isNothing (_modelElementApi m)
 
@@ -150,10 +150,8 @@ cFindElement run sessApi =
 
     exec :: Cmd GetTextInput Concrete -> m (Opaque (W.ElementAPI (AsClientT ClientM)))
     exec (Cmd (GetTextInput inpId)) = runOrFail run
-      $ Opaque
-      . W.elementClient (sessApi ^. sessId)
-      . W.unValue
-      <$> W.findElement (sessApi ^. sessClient) (W.ByCss (input # byId inpId))
+      $ Opaque . W.elementClient sId . W.unValue
+      <$> W.findElement sCli (W.ByCss (input # byId inpId))
 
   in
     Command gen exec
