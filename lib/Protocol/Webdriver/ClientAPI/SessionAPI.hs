@@ -92,7 +92,7 @@ data SessionAPI route = SessionAPI
   , switchToFrame           :: route :- "frame" :> ReqBody '[WaargJSON WDJson] SwitchToFrame :> Post '[] NoContent
   , refresh                 :: route :- "refresh" :> Post '[] NoContent
   , takeScreenshot          :: route :- "screenshot" :> Get '[WaargJSON WDJson] (Value Base64)
-  , getPageSource           :: route :- "source" :> Get '[] NoContent
+  , getPageSource           :: route :- "source" :> Get '[WaargJSON WDJson] (Value Text)
   , getTimeouts             :: route :- "timeouts" :> Get '[WaargJSON WDJson] (Value Timeout)
   , setTimeouts             :: route :- "timeouts" :> ReqBody '[WaargJSON WDJson] Timeout :> Post '[] NoContent
   , getTitle                :: route :- "title" :> Get '[WaargJSON WDJson] (Value Text)

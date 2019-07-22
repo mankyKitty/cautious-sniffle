@@ -10,7 +10,6 @@ let
   };
 
   waarg-overlay         = import "${sources.waargonaut}/waargonaut-deps.nix";
-  servant-waarg-overlay = import "${sources.servant-waargonaut}/servant-waargonaut-deps.nix";
 
   overlay = self: super: {
     gconf = super.gnome2.GConf;
@@ -22,30 +21,28 @@ let
         ghcWithPackages = hself.ghc.withPackages;
 
         # Any overrides or snowflake packages can be placed here
+        hedgehog = hsuper.callHackageDirect {
+          pkg = "hedgehog";
+          ver = "1.0";
+          sha256 = "06q1w1pjvhdr6za1n5kjd3zszh4xi2ixrwgclqqqj6nhdiz8y6zj";
+        } {};
 
-        # webdriver = hself.callCabal2nix "webdriver" (import ./nix/swamp-webdriver.nix) {};
-        # webdriver = hself.callPackage (import ../hs-webdriver) {};
+        clay = super.haskell.lib.dontCheck hsuper.clay;
 
-        dependent-sum-template       = hself.callCabal2nix "dependent-sum-template" sources.dependent-sum-template {};
-        dependent-sum       = hself.callCabal2nix "dependent-sum" sources.dependent-sum {};
-        dependent-map       = hself.callCabal2nix "dependent-map" sources.dependent-map {};
+        dependent-sum-template = hsuper.callCabal2nix "dependent-sum-template" sources.dependent-sum-template {};
+        dependent-sum       = hsuper.callCabal2nix "dependent-sum" sources.dependent-sum {};
+        dependent-map       = hsuper.callCabal2nix "dependent-map" sources.dependent-map {};
+        waargonaut         = hsuper.callCabal2nix "waargonaut" sources.waargonaut {};
+        servant-waargonaut = hsuper.callCabal2nix "servant-waargonaut" sources.servant-waargonaut {};
 
-        servant-client      = hself.callHackage "servant-client" "0.14" {};
-        servant-client-core = hself.callHackage "servant-client-core" "0.14.1" {};
-
-        waargonaut         = hself.callPackage sources.waargonaut {};
-        servant-waargonaut = hself.callCabal2nix "servant-waargonaut" sources.servant-waargonaut {};
       });
     });
   };
 
   pkgs = import nixpkgs {
+    config.allowBroken = true;
     # Yay, overlays!
-    overlays =
-      [ waarg-overlay
-        servant-waarg-overlay
-        overlay
-      ];
+    overlays = [waarg-overlay overlay];
   };
 
   drv = pkgs.haskellPackages.callPackage ./cautious-sniffle.nix {};
@@ -53,13 +50,10 @@ let
   drvWithTools = pkgs.haskell.lib.addBuildTools drv
     [ # The selenium server for our webdriver instructions
       # Require version 2.53.1 as 3.x.x isn't supported yet
-      # (import ./nix/selenium-server-2.nix { inherit nixpkgs; })
-      # (pkgs.callPackage (import ./nix/selenium-standalone-server.nix) {})
       pkgs.selenium-server-standalone
       pkgs.chromedriver
       pkgs.geckodriver
       pkgs.jre
     ];
 in
-  # Remove the need for 'shell.nix'.
-  pkgs.haskell.lib.shellAware drvWithTools
+  drvWithTools.env

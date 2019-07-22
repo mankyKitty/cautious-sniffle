@@ -10,7 +10,7 @@
 module Protocol.Webdriver.ClientAPI.Types where
 
 import           Control.Error                               (headErr)
-import           Control.Exception                           (fromException)
+import           Control.Exception                           (fromException, displayException)
 import           Data.Bifunctor                              (bimap)
 import           Data.Bool                                   (Bool)
 import           Data.Functor.Alt                            ((<!>))
@@ -47,11 +47,11 @@ encURI :: Applicative f => E.Encoder f WDUri
 encURI = singleValueObj "url" (URI.render . _unWDUri >$< E.text)
 
 decURI :: Monad f => D.Decoder f WDUri
-decURI = withText (bimap (errText . fromException) WDUri . URI.mkURI)
+decURI = withText (bimap (T.pack . errText . fromException) WDUri . URI.mkURI)
   where
     errText = maybe
       "WDUri : Unknown Error parsing URI"
-      (\(URI.ParseException t _) -> t)
+      (\(URI.ParseException t) -> displayException t)
 
 instance JsonDecode WDJson WDUri where mkDecoder = pure decURI
 instance JsonEncode WDJson WDUri where mkEncoder = pure encURI
@@ -111,7 +111,7 @@ instance JsonDecode WDJson SwitchToWindow where
 data WindowType
   = Window
   | Tab
-  deriving (Read, Show, Eq)
+  deriving (Read, Show, Eq, Bounded, Enum)
 
 encWindowType :: Applicative f => E.Encoder f WindowType
 encWindowType = encodeShowToLower

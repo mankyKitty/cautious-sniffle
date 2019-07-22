@@ -6,12 +6,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Commands where
 
+import           Control.Applicative                                 (liftA2)
 import           Control.Lens                                        (to, (.~),
                                                                       (?~),
                                                                       (^.))
 import           Control.Monad                                       (void)
 import           Control.Monad.IO.Class                              (MonadIO)
-import Control.Applicative (liftA2)
 
 import           Data.Function                                       ((&))
 import           Data.Kind                                           (Type)
@@ -22,7 +22,6 @@ import           Data.Text                                           (Text)
 import           Text.URI                                            (URI)
 import           Text.URI.QQ                                         (uri)
 
-import           Servant.Client                                      (ClientM)
 import           Servant.Client.Generic                              (AsClientT)
 
 import           Hedgehog                                            (Callback (..),
@@ -34,6 +33,7 @@ import           Hedgehog                                            (Callback (
                                                                       Opaque (..),
                                                                       Symbolic,
                                                                       Var (..),
+                                                                      evalIO,
                                                                       opaque,
                                                                       (===))
 import qualified Hedgehog.Gen                                        as Gen
@@ -47,7 +47,10 @@ import qualified Protocol.Webdriver.ClientAPI.Types.LocationStrategy as W
 import           Clay.Elements                                       (input)
 import           Clay.Selector                                       (byId,
                                                                       ( # ))
-import           Types
+
+import           General.ManageDriver
+import           General.TestAPI
+import           General.Types
 
 newtype Cmd a (v :: Type -> Type) = Cmd a
   deriving (Eq, Show)
@@ -57,45 +60,31 @@ instance HTraversable (Cmd a) where htraverse _ (Cmd a) = pure (Cmd a)
 newtype LoadUrl = LoadUrl URI deriving (Eq, Show)
 newtype GetTextInput = GetTextInput Text deriving Show
 
-data CheckSentKeys (v :: Type -> Type) = CheckSentKeys (Var (Opaque (W.ElementAPI (AsClientT ClientM))) v) Text
+data CheckSentKeys (v :: Type -> Type) = CheckSentKeys (Var (Opaque (W.ElementAPI (AsClientT IO))) v) Text
   deriving Show
 
 instance HTraversable CheckSentKeys where
   htraverse f (CheckSentKeys eApi inp) = (`CheckSentKeys` inp) <$> htraverse f eApi
 
-data SendKeys (v :: Type -> Type) = SendKeys (Var (Opaque (W.ElementAPI (AsClientT ClientM))) v) Text
+data SendKeys (v :: Type -> Type) = SendKeys (Var (Opaque (W.ElementAPI (AsClientT IO))) v) Text
   deriving Show
 
 instance HTraversable SendKeys where
   htraverse f (SendKeys eApi inp) = (`SendKeys` inp) <$> htraverse f eApi
 
-boolGen
-  :: MonadGen g
-  => (Model Symbolic -> Bool)
-  -> g (a Symbolic)
-  -> Model Symbolic
-  -> Maybe (g (a Symbolic))
-boolGen f g m =
-  if f m then pure g else Nothing
+boolGen :: MonadGen g => (Model Symbolic -> Bool) -> g (a Symbolic) -> Model Symbolic -> Maybe (g (a Symbolic))
+boolGen f g m = if f m then pure g else Nothing
 
-cSendKeys
-  :: forall g m.
-  ( MonadGen g
-  , MonadTest m
-  , MonadIO m
-  )
-  => WDRun m
-  -> Sess
-  -> Command g m Model
-cSendKeys run _sess =
+cSendKeys :: forall g m. (MonadGen g, MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cSendKeys _ _ =
   let
     gen :: Model Symbolic -> Maybe (g (SendKeys Symbolic))
     gen m = case (m ^. modelElementApi, m ^. modelKeysSent) of
-      (Just eApi, Nothing) -> pure $ SendKeys eApi <$> Gen.text (Range.linear 0 100) Gen.unicode
+      (Just eApi, Nothing) -> pure $ SendKeys eApi <$> Gen.text (Range.linear 0 100) Gen.unicodeAll
       _                    -> Nothing
 
     exec :: SendKeys Concrete -> m ()
-    exec (SendKeys elemApi textInput) = runOrFail run . void $
+    exec (SendKeys elemApi textInput) = evalIO . void $
       W.elementSendKeys (opaque elemApi) (W.ElementSendKeys textInput)
 
   in
@@ -104,16 +93,8 @@ cSendKeys run _sess =
     , Update $ \m (SendKeys _ sent) _ -> m & modelKeysSent ?~ sent
     ]
 
-cCheckSentKeys
-  :: forall g m.
-  ( MonadGen g
-  , MonadTest m
-  , MonadIO m
-  )
-  => WDRun m
-  -> Sess
-  -> Command g m Model
-cCheckSentKeys run _sess =
+cCheckSentKeys :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cCheckSentKeys _ _sess =
   let
     canCheckSentKeys m = liftA2 (,)
       (m ^. modelElementApi)
@@ -123,7 +104,7 @@ cCheckSentKeys run _sess =
     gen m = pure . uncurry CheckSentKeys <$> canCheckSentKeys m
 
     exec :: CheckSentKeys Concrete -> m Text
-    exec (CheckSentKeys eApi _) = runOrFail run $
+    exec (CheckSentKeys eApi _) = evalIO $
       W.unValue <$> W.getElementProperty (opaque eApi) "value"
   in
     Command gen exec
@@ -132,26 +113,18 @@ cCheckSentKeys run _sess =
     , Ensure $ \_ _ (CheckSentKeys _ txt) out -> txt === out
     ]
 
-cFindElement
-  :: forall g m.
-  ( MonadGen g
-  , MonadTest m
-  , MonadIO m
-  )
-  => WDRun m
-  -> Sess
-  -> Command g m Model
-cFindElement run (Sess sId sCli) =
+cFindElement :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cFindElement env (Sess _ sCli) =
   let
     readyFindElem m = m ^. modelAtUrl && isNothing (_modelElementApi m)
 
     gen :: Model Symbolic -> Maybe (g (Cmd GetTextInput Symbolic))
     gen = boolGen readyFindElem (Cmd . GetTextInput <$> Gen.element ["input-name", "input-occupation"])
 
-    exec :: Cmd GetTextInput Concrete -> m (Opaque (W.ElementAPI (AsClientT ClientM)))
-    exec (Cmd (GetTextInput inpId)) = runOrFail run
-      $ Opaque . W.elementClient sId . W.unValue
-      <$> W.findElement sCli (W.ByCss (input # byId inpId))
+    exec :: Cmd GetTextInput Concrete -> m (Opaque (W.ElementAPI (AsClientT IO)))
+    exec (Cmd (GetTextInput inpId)) = evalIO $ do
+      e <- W.unValue <$> W.findElement sCli (W.ByCss (input # byId inpId))
+      pure . Opaque $ _mkElement (_envWDCore env) sCli e
 
   in
     Command gen exec
@@ -159,29 +132,19 @@ cFindElement run (Sess sId sCli) =
     , Update $ \m _ out -> m & modelElementApi ?~ out
     ]
 
-cNavigateTo
-  :: forall g m.
-  ( MonadGen g
-  , MonadTest m
-  , MonadIO m
-  )
-  => WDRun m
-  -> Sess
-  -> Command g m Model
-cNavigateTo run sessApi =
+cNavigateTo :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cNavigateTo _ sessApi =
   let
     gen :: Model Symbolic -> Maybe (g (Cmd LoadUrl Symbolic))
     gen m = if m ^. modelAtUrl . to not
       then pure $ Cmd <$> Gen.constant (LoadUrl [uri|http://localhost:9999/|])
       else Nothing
 
-    exec :: Cmd LoadUrl Concrete -> m W.WDUri
-    exec (Cmd (LoadUrl page)) = runOrFail run $ do
-      _ <- W.navigateTo (sessApi ^. sessClient) (W.WDUri page)
-      W.unValue <$> W.getUrl (sessApi ^. sessClient)
+    exec :: Cmd LoadUrl Concrete -> m ()
+    exec (Cmd (LoadUrl page)) = evalIO $
+      void $ W.navigateTo (sessApi ^. sessClient) (W.WDUri page)
   in
     Command gen exec
-      [ Require $ \m _                                -> not $ _modelAtUrl m
-      , Update $ \m _ _                               -> m & modelAtUrl .~ True
-      , Ensure $ \_old _new (Cmd (LoadUrl url0)) url1 -> W._unWDUri url1 === url0
+      [ Require $ \m _  -> not $ _modelAtUrl m
+      , Update $ \m _ _ -> m & modelAtUrl .~ True
       ]

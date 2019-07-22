@@ -3,133 +3,71 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Main where
+module Main (main) where
 
-import           System.IO                                       (openTempFile)
-import qualified System.Process                                  as Proc
+import           Control.Monad                               (void)
+import           Data.Proxy                                  (Proxy (..))
 
-import           Control.Concurrent                              (forkIO,
-                                                                  killThread,
-                                                                  threadDelay)
-import           Control.Exception                               (bracket)
-import           Control.Monad                                   (void)
-import           Control.Monad.IO.Class                          (MonadIO)
+import           Test.Tasty                                  (TestTree,
+                                                              defaultIngredients,
+                                                              defaultMainWithIngredients,
+                                                              includingOptions,
+                                                              testGroup,
+                                                              withResource)
+import           Test.Tasty.Hedgehog                         (testProperty)
+import           Test.Tasty.Options                          (OptionDescription (..))
 
-import qualified Servant.Client                                  as Servant
+import           Hedgehog                                    (evalIO,
+                                                              executeSequential,
+                                                              forAll, property,
+                                                              withTests)
 
-import qualified Network.HTTP.Client                             as HTTP
-import qualified Web.Scotty                                      as W
+import qualified Hedgehog.Gen                                as Gen
+import qualified Hedgehog.Range                              as Range
 
-import           Hedgehog                                        (Group (..),
-                                                                  MonadTest,
-                                                                  Property,
-                                                                  PropertyT,
-                                                                  checkSequential,
-                                                                  evalEither,
-                                                                  evalIO,
-                                                                  executeSequential,
-                                                                  forAll,
-                                                                  property,
-                                                                  withTests)
-
-import qualified Hedgehog.Gen                                    as Gen
-import qualified Hedgehog.Range                                  as Range
-
-import qualified Protocol.Webdriver.ClientAPI                    as W
-import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities as W
-import qualified Protocol.Webdriver.ClientAPI.Types.Internal     as W
-import qualified Protocol.Webdriver.ClientAPI.Types.Session      as W
+import qualified Protocol.Webdriver.ClientAPI                as W
+import qualified Protocol.Webdriver.ClientAPI.Types.Internal as W
+import qualified Protocol.Webdriver.ClientAPI.Types.Session  as W
 
 import           Commands
-import           Types
+import           General.ManageDriver
+import           General.TestAPI
+import           General.TestOpts                            (OverrideWDUrl)
+import           General.Types
+import           General.UnitTests
 
-session :: W.NewSession
-session = W.NewSession
-  (W.asHeadless W.chrome)       -- Browser
-  Nothing                       -- username
-  Nothing                       -- password
-
-webdriverStateTest
-  :: WDRun (PropertyT IO)
-  -> Sess
-  -> Property
-webdriverStateTest runner sessApi = withTests 1 . property $ do
-  let
-    initialModel = Model
-      False
-      Nothing
-      Nothing
-
-    mk c =
-      c runner sessApi
-
-    commands =
-      [ mk cFindElement
-      , mk cNavigateTo
-      , mk cSendKeys
-      , mk cCheckSentKeys
-      ]
-
-  actions <- forAll $ Gen.sequential (Range.linear 3 10) initialModel commands
-  executeSequential initialModel actions
-
-main :: IO Bool
-main = do
-  env <- flip Servant.mkClientEnv W.defaultWebdriverClient <$> HTTP.newManager HTTP.defaultManagerSettings
-
-  let
-    stopSeleniumAndWebServer (web, sel) = do
-      killThread web
-      Proc.terminateProcess sel
-
-    startSeleniumAndWebServer = do
-      sel <- localSelenium
-      putStrLn "Pause to allow selenium to start" >> threadDelay 2000000
-      ws <- forkIO babbyTestWebServer
-      pure (ws, sel)
-
-    runForEither a =
-      Servant.runClientM a env
-
-    runner =
-      WDRun (runWDAction env) (evalIO . runForEither)
-
-  bracket startSeleniumAndWebServer stopSeleniumAndWebServer . const $ do
-    sessD <- runForEither (W.newSession W.wdClient session)
-      >>= either (error . show) (pure . W.unValue)
+stateMachineTests :: IO Env -> (Env -> IO ()) -> TestTree
+stateMachineTests start stop = withResource start stop $ \ioenv ->
+  testProperty "Enter some text" . withTests 1 . property $ do
+    env <- evalIO ioenv
+    sessD <- evalIO $ W.unValue <$> W.newSession (_core . _envWDCore $ env) chromeSession
 
     let
-      sId = W._sessionId sessD
-      sCli = W.sessionClient sId
+      sCli = _mkSession (_envWDCore env) (W._sessionId sessD)
+      sessApi = Sess (W._sessionId sessD) sCli
 
-      sessApi = Sess sId sCli
+      initialModel = Model
+        False
+        Nothing
+        Nothing
 
-    b <- checkSequential $ Group "WebDriver Tests" [
-      ("Webdriver command sequences", webdriverStateTest runner sessApi)
-      ]
+      commands = fmap (\c -> c env sessApi)
+        [ cFindElement
+        , cNavigateTo
+        , cSendKeys
+        , cCheckSentKeys
+        ]
 
-    void $ runForEither (W.deleteSession sCli)
+    actions <- forAll $ Gen.sequential (Range.linear 3 10) initialModel commands
+    executeSequential initialModel actions
+    evalIO . void $ W.deleteSession sCli
 
-    pure b
-
-runWDAction
-  :: ( MonadIO m
-     , MonadTest m
-     )
-  => Servant.ClientEnv
-  -> Servant.ClientM b
-  -> m b
-runWDAction env action =
-  evalIO (Servant.runClientM action env) >>= evalEither
-
-babbyTestWebServer :: IO ()
-babbyTestWebServer = W.scotty 9999 $ do
-  W.get "/" (W.file "test/test-webpage.html")
-  W.get "/taco" (W.file "test/test-taco-webpage.html")
-
-localSelenium
-  :: IO Proc.ProcessHandle
-localSelenium = do
-  (f, _) <- openTempFile "/tmp/" "SELENIUM_WD_LOG.log"
-  putStrLn $ "Selenium log file: " <> f
-  Proc.spawnCommand $ "selenium-server -port 4444 -debug -log " <> f
+main :: IO ()
+main = defaultMainWithIngredients myOptions . manageDriverAndServer $ \up down -> testGroup "Webdriver Tests"
+  [ stateMachineTests up down
+  , unitTests up down
+  ]
+  where
+    myOptions =
+      includingOptions [Option (Proxy :: Proxy OverrideWDUrl)]
+      : defaultIngredients
