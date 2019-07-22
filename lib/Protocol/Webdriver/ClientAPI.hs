@@ -31,7 +31,7 @@ import qualified GHC.Generics                                 as GHC
 
 import           Data.Proxy                                   (Proxy (..))
 import           Protocol.Webdriver.ClientAPI.Types.ElementId (ElementId)
-import           Protocol.Webdriver.ClientAPI.Types.Internal  (Value, WDJson)
+import           Protocol.Webdriver.ClientAPI.Types.Internal  (Success, WDJson)
 import           Protocol.Webdriver.ClientAPI.Types.Session   (NewSession,
                                                                Session,
                                                                SessionId)
@@ -51,7 +51,7 @@ import           Servant.Client.Generic                       (AsClientT)
 
 data WebDriverAPI route = WebDriverAPI
   { getStatus   :: route :- "status" :> Get '[WaargJSON WDJson] Json
-  , newSession  :: route :- "session" :> ReqBody '[WaargJSON WDJson] NewSession :> Post '[WaargJSON WDJson] (Value Session)
+  , newSession  :: route :- "session" :> ReqBody '[WaargJSON WDJson] NewSession :> Post '[WaargJSON WDJson] (Success Session)
   , withSession :: route :- "session" :> Capture "sessionId" SessionId :> ToServantApi SessionAPI
   }
   deriving GHC.Generic

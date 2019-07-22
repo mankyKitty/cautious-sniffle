@@ -40,7 +40,7 @@ stateMachineTests :: IO Env -> (Env -> IO ()) -> TestTree
 stateMachineTests start stop = withResource start stop $ \ioenv ->
   testProperty "Enter some text" . withTests 1 . property $ do
     env <- evalIO ioenv
-    sessD <- evalIO $ W.unValue <$> W.newSession (_core . _envWDCore $ env) chromeSession
+    sessD <- evalIO $ W.getSuccessValue <$> W.newSession (_core . _envWDCore $ env) chromeSession
 
     let
       sCli = _mkSession (_envWDCore env) (W._sessionId sessD)

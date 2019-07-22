@@ -125,14 +125,17 @@ instance JsonEncode WDJson a => JsonEncode WDJson (Vector a) where
 instance JsonDecode WDJson a => JsonDecode WDJson (Vector a) where
   mkDecoder = D.withCursor . D.rightwardSnoc V.empty <$> mkDecoder
 
-newtype Value a = Value { unValue :: a }
+-- | This package tries to be a faithful implementation of the W3C
+-- WebDriver Specification, as such the types and their names will be the
+-- same or as near as possible to the specification.
+newtype Success a = Success { getSuccessValue :: a }
   deriving (Show, Eq, Functor)
 
 instance JsonDecode WDJson () where
   mkDecoder = pure D.null
 
-instance JsonDecode WDJson a => JsonDecode WDJson (Value a) where
-  mkDecoder = pure $ Value <$> D.atKey "value" (untag $ mkDecoder @WDJson)
+instance JsonDecode WDJson a => JsonDecode WDJson (Success a) where
+  mkDecoder = pure $ Success <$> D.atKey "value" (untag $ mkDecoder @WDJson)
 
 newtype Base64 = Base64
   { unBase64 :: ByteString }

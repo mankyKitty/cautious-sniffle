@@ -143,17 +143,17 @@ instance JsonEncode WDJson NewWindow where
 instance JsonDecode WDJson NewWindow where
   mkDecoder = gDecoder $ trimWaargOpts "_newWindowHandle"
 
-data SetWindowRect = SetWindowRect
-  { _setWindowRectX      :: Int,
-    _setWindowRectY      :: Int,
-    _setWindowRectWidth  :: Int,
-    _setWindowRectHeight :: Int
+data WDRect = WDRect
+  { _windowRectX      :: Int,
+    _windowRectY      :: Int,
+    _windowRectWidth  :: Int,
+    _windowRectHeight :: Int
   }
   deriving (Show, Eq)
-deriveGeneric ''SetWindowRect
+deriveGeneric ''WDRect
 
-instance JsonEncode WDJson SetWindowRect
-instance JsonDecode WDJson SetWindowRect
+instance JsonEncode WDJson WDRect
+instance JsonDecode WDJson WDRect
 
 newtype SwitchToFrame = SwitchToFrame
   { _unSwitchToFrame :: Json }

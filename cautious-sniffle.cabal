@@ -118,6 +118,7 @@ test-suite wd-tests
   other-modules:       General.Types
                      , General.ManageDriver
                      , General.TestOpts
+                     , General.TestAPI
                      , General.Webserver
                      , General.UnitTests
 

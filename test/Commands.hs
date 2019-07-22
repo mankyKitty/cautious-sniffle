@@ -105,7 +105,7 @@ cCheckSentKeys _ _sess =
 
     exec :: CheckSentKeys Concrete -> m Text
     exec (CheckSentKeys eApi _) = evalIO $
-      W.unValue <$> W.getElementProperty (opaque eApi) "value"
+      W.getSuccessValue <$> W.getElementProperty (opaque eApi) "value"
   in
     Command gen exec
     [ Require $ const . isJust . canCheckSentKeys
@@ -123,7 +123,7 @@ cFindElement env (Sess _ sCli) =
 
     exec :: Cmd GetTextInput Concrete -> m (Opaque (W.ElementAPI (AsClientT IO)))
     exec (Cmd (GetTextInput inpId)) = evalIO $ do
-      e <- W.unValue <$> W.findElement sCli (W.ByCss (input # byId inpId))
+      e <- W.getSuccessValue <$> W.findElement sCli (W.ByCss (input # byId inpId))
       pure . Opaque $ _mkElement (_envWDCore env) sCli e
 
   in
