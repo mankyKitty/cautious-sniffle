@@ -7,37 +7,77 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
-module Protocol.Webdriver.ClientAPI.Types where
+module Protocol.Webdriver.ClientAPI.Types
+  ( WDUri (..)
+  , encURI
+  , decURI
 
-import           Control.Error                               (headErr)
-import           Control.Exception                           (fromException, displayException)
-import           Data.Bifunctor                              (bimap)
-import           Data.Bool                                   (Bool)
-import           Data.Functor.Alt                            ((<!>))
-import           Data.Functor.Contravariant                  ((>$<))
-import           Data.Scientific                             (Scientific)
-import qualified Data.Scientific                             as Sci
-import           Data.Text                                   (Text)
-import qualified Data.Text                                   as T
-import           Data.Vector                                 (Vector)
-import qualified Text.ParserCombinators.ReadP                as R
-import           Text.URI                                    (URI)
-import qualified Text.URI                                    as URI
-import qualified Waargonaut.Decode                           as D
-import qualified Waargonaut.Encode                           as E
-import           Waargonaut.Generic                          (JsonDecode (..),
-                                                              JsonEncode (..),
-                                                              gDecoder,
-                                                              gEncoder)
-import           Waargonaut.Types.Json                       (Json)
+  , TakeElementScreenshot (..)
+  , WDRect (..)
+  , ElementSendKeys (..)
+  , CreateWindow (..)
+  , NewWindow (..)
 
-import           Generics.SOP.TH                             (deriveGeneric)
-import           Protocol.Webdriver.ClientAPI.Types.Internal (WDJson, decodeFromReadUCFirst,
-                                                              encodeShowToLower,
-                                                              singleValueObj,
-                                                              trimWaargOpts,
-                                                              withString,
-                                                              withText)
+  , WindowType (..)
+  , encWindowType
+  , decWindowType
+
+  , WindowHandle (..)
+  , encWindowHandle
+  , decWindowHandle
+  , printWindowHandle
+  , checkWindowHandlePattern
+  
+  , SwitchToWindow (..)
+  , PerformActions (..)
+  , SendAlertText (..)
+  , AddCookie (..)
+  , ExecuteAsyncScript (..)
+  , ExecuteScript (..)
+  , SwitchToFrame (..)
+
+  , module Protocol.Webdriver.ClientAPI.Types.Internal
+  , module Protocol.Webdriver.ClientAPI.Types.ElementId
+  , module Protocol.Webdriver.ClientAPI.Types.Error
+  , module Protocol.Webdriver.ClientAPI.Types.LocationStrategy
+  , module Protocol.Webdriver.ClientAPI.Types.LogSettings
+  , module Protocol.Webdriver.ClientAPI.Types.ProxySettings
+  , module Protocol.Webdriver.ClientAPI.Types.Session
+  , module Protocol.Webdriver.ClientAPI.Types.Timeout
+  ) where
+
+import           Control.Error                                       (headErr)
+import           Control.Exception                                   (displayException,
+                                                                      fromException)
+import           Data.Bifunctor                                      (bimap)
+import           Data.Bool                                           (Bool)
+import           Data.Functor.Alt                                    ((<!>))
+import           Data.Functor.Contravariant                          ((>$<))
+import           Data.Scientific                                     (Scientific)
+import qualified Data.Scientific                                     as Sci
+import           Data.Text                                           (Text)
+import qualified Data.Text                                           as T
+import           Data.Vector                                         (Vector)
+import qualified Text.ParserCombinators.ReadP                        as R
+import           Text.URI                                            (URI)
+import qualified Text.URI                                            as URI
+import qualified Waargonaut.Decode                                   as D
+import qualified Waargonaut.Encode                                   as E
+import           Waargonaut.Generic                                  (JsonDecode (..),
+                                                                      JsonEncode (..),
+                                                                      gDecoder,
+                                                                      gEncoder)
+import           Waargonaut.Types.Json                               (Json)
+
+import           Generics.SOP.TH                                     (deriveGeneric)
+import           Protocol.Webdriver.ClientAPI.Types.ElementId
+import           Protocol.Webdriver.ClientAPI.Types.Error
+import           Protocol.Webdriver.ClientAPI.Types.Internal
+import           Protocol.Webdriver.ClientAPI.Types.LocationStrategy
+import           Protocol.Webdriver.ClientAPI.Types.LogSettings
+import           Protocol.Webdriver.ClientAPI.Types.ProxySettings
+import           Protocol.Webdriver.ClientAPI.Types.Session
+import           Protocol.Webdriver.ClientAPI.Types.Timeout
 
 newtype WDUri = WDUri
   { _unWDUri :: URI }

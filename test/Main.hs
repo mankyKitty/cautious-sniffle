@@ -31,7 +31,6 @@ import qualified Protocol.Webdriver.ClientAPI.Types.Session  as W
 
 import           Commands
 import           General.ManageDriver
-import           General.TestAPI
 import           General.TestOpts                            (OverrideWDUrl)
 import           General.Types
 import           General.UnitTests

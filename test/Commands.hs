@@ -6,50 +6,37 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Commands where
 
-import           Control.Applicative                                 (liftA2)
-import           Control.Lens                                        (to, (.~),
-                                                                      (?~),
-                                                                      (^.))
-import           Control.Monad                                       (void)
-import           Control.Monad.IO.Class                              (MonadIO)
+import           Control.Applicative                (liftA2)
+import           Control.Lens                       (to, (.~), (?~), (^.))
+import           Control.Monad                      (void)
+import           Control.Monad.IO.Class             (MonadIO)
 
-import           Data.Function                                       ((&))
-import           Data.Kind                                           (Type)
-import           Data.Maybe                                          (isJust,
-                                                                      isNothing)
-import           Data.Text                                           (Text)
+import           Data.Function                      ((&))
+import           Data.Kind                          (Type)
+import           Data.Maybe                         (isJust, isNothing)
+import           Data.Text                          (Text)
 
-import           Text.URI                                            (URI)
-import           Text.URI.QQ                                         (uri)
+import           Text.URI                           (URI)
+import           Text.URI.QQ                        (uri)
 
-import           Servant.Client.Generic                              (AsClientT)
+import           Servant.Client.Generic             (AsClientT)
 
-import           Hedgehog                                            (Callback (..),
-                                                                      Command (..),
-                                                                      Concrete,
-                                                                      HTraversable (..),
-                                                                      MonadGen,
-                                                                      MonadTest,
-                                                                      Opaque (..),
-                                                                      Symbolic,
-                                                                      Var (..),
-                                                                      evalIO,
-                                                                      opaque,
-                                                                      (===))
-import qualified Hedgehog.Gen                                        as Gen
-import qualified Hedgehog.Range                                      as Range
+import           Hedgehog                           (Callback (..),
+                                                     Command (..), Concrete,
+                                                     HTraversable (..),
+                                                     MonadGen, MonadTest,
+                                                     Opaque (..), Symbolic,
+                                                     Var (..), evalIO, opaque,
+                                                     (===))
+import qualified Hedgehog.Gen                       as Gen
+import qualified Hedgehog.Range                     as Range
 
-import qualified Protocol.Webdriver.ClientAPI                        as W
-import qualified Protocol.Webdriver.ClientAPI.Types                  as W
-import           Protocol.Webdriver.ClientAPI.Types.Internal         as W
-import qualified Protocol.Webdriver.ClientAPI.Types.LocationStrategy as W
+import qualified Protocol.Webdriver.ClientAPI       as W
+import qualified Protocol.Webdriver.ClientAPI.Types as W
 
-import           Clay.Elements                                       (input)
-import           Clay.Selector                                       (byId,
-                                                                      ( # ))
+import           Clay.Elements                      (input)
+import           Clay.Selector                      (byId, ( # ))
 
-import           General.ManageDriver
-import           General.TestAPI
 import           General.Types
 
 newtype Cmd a (v :: Type -> Type) = Cmd a

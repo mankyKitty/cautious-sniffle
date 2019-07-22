@@ -12,23 +12,20 @@ module Protocol.Webdriver.ClientAPI.SessionAPI
   , windowApi
   ) where
 
-import qualified GHC.Generics                                        as GHC
+import qualified GHC.Generics                        as GHC
 
-import           Data.Proxy                                          (Proxy (..))
-import           Data.Text                                           (Text)
-import           Data.Vector                                         (Vector)
-import           Protocol.Webdriver.ClientAPI.Types
-import           Protocol.Webdriver.ClientAPI.Types.ElementId        (ElementId)
-import           Protocol.Webdriver.ClientAPI.Types.Internal         (Base64,
-                                                                      Success,
-                                                                      WDJson)
-import           Protocol.Webdriver.ClientAPI.Types.LocationStrategy (LocateUsing)
-import           Protocol.Webdriver.ClientAPI.Types.Timeout          (Timeout)
+import           Data.Proxy                          (Proxy (..))
+import           Data.Text                           (Text)
+import           Data.Vector                         (Vector)
+
 import           Servant.API
-import           Servant.API.ContentTypes.Waargonaut                 (WaargJSON)
-import           Waargonaut.Types.Json                               (Json)
+import           Servant.API.ContentTypes.Waargonaut (WaargJSON)
+
+import           Waargonaut.Types.Json               (Json)
 
 import           Servant.API.Generic
+
+import           Protocol.Webdriver.ClientAPI.Types
 
 data ElementAPI route = ElementAPI
   { getElementAttribute     :: route :- "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success Text)

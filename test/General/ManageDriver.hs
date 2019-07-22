@@ -3,7 +3,6 @@ module General.ManageDriver
   ( startDriver
   , stopDriver
   , localSelenium
-  , Env (..)
   , manageDriverAndServer
   ) where
 
@@ -13,21 +12,22 @@ import           Data.Foldable                (traverse_)
 import           Data.Maybe                   (fromMaybe)
 import           Data.Maybe                   (isJust)
 
-import           Control.Concurrent           (ThreadId, forkIO, killThread,
+import           Control.Concurrent           (forkIO, killThread,
                                                threadDelay)
 import           System.IO                    (openTempFile)
 import           System.Process               (ProcessHandle, spawnCommand,
                                                terminateProcess)
 
-import           Servant.Client               (BaseUrl, ClientEnv)
+import           Servant.Client               (BaseUrl)
 import qualified Servant.Client               as Servant
 
 import qualified Network.HTTP.Client          as HTTP
 
 import qualified Protocol.Webdriver.ClientAPI as W
 
-import           General.TestAPI              (WDCore, mkWDCoreTest)
+import           General.TestAPI              (mkWDCoreTest)
 import           General.TestOpts             (OverrideWDUrl (..))
+import           General.Types                (Env (..))
 import           General.Webserver
 
 localSelenium :: IO ProcessHandle
@@ -45,13 +45,6 @@ startDriver :: Maybe BaseUrl -> IO (Maybe ProcessHandle)
 startDriver existingUrl = if isJust existingUrl then pure Nothing else do
   d <- pure <$> localSelenium
   d <$ (putStrLn "Pause to allow selenium to start" >> threadDelay 2000000)
-
-data Env = Env
-  { _envTestWebServer :: ThreadId
-  , _envDriverProcess :: Maybe ProcessHandle
-  , _envEnv           :: ClientEnv
-  , _envWDCore        :: WDCore IO
-  }
 
 manageDriverAndServer :: (IO Env -> (Env -> IO ()) -> TestTree) -> TestTree
 manageDriverAndServer f = askOption $ \(OverrideWDUrl existingWDUrl) ->
