@@ -75,10 +75,10 @@ data SessionAPI route = SessionAPI
   , sendAlertText           :: route :- "alert" :> "text" :> ReqBody '[WaargJSON WDJson] SendAlertText :> Post '[WaargJSON WDJson] (Success ())
   , back                    :: route :- "back" :> Post '[WaargJSON WDJson] (Success ())
   , deleteCookie            :: route :- "cookie" :> Capture "name" Text :> Delete '[WaargJSON WDJson] (Success ())
-  , getNamedCookie          :: route :- "cookie" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success Json)
+  , getNamedCookie          :: route :- "cookie" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success Cookie)
   , deleteAllCookies        :: route :- "cookie" :> Delete '[WaargJSON WDJson] (Success ())
-  , getAllCookies           :: route :- "cookie" :> Get '[WaargJSON WDJson] (Vector Json)
-  , addCookie               :: route :- "cookie" :> ReqBody '[WaargJSON WDJson] AddCookie :> Post '[WaargJSON WDJson] (Success ())
+  , getAllCookies           :: route :- "cookie" :> Get '[WaargJSON WDJson] (Success (Vector Cookie))
+  , addCookie               :: route :- "cookie" :> ReqBody '[WaargJSON WDJson] Cookie :> Post '[WaargJSON WDJson] (Success ())
   , getActiveElement        :: route :- "element" :> "active" :> Post '[WaargJSON WDJson] (Success ElementId)
   , withElement             :: route :- "element" :> Capture "elementId" ElementId :> ToServantApi ElementAPI
   , findElement             :: route :- "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Success ElementId)

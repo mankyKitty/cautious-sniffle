@@ -33,7 +33,7 @@ fetchInputElement
   :: Env
   -> W.SessionAPI (AsClientT IO)
   -> IO (W.ElementAPI (AsClientT IO))
-fetchInputElement env client = do
+fetchInputElement env client =
   _mkElement (_envWDCore env) client . W.getSuccessValue
     <$> W.findElement client (W.ByCss (input # byId "input-name"))
 
@@ -49,7 +49,7 @@ unitTests start stop = withResource start stop $ \ioenv ->
   , after AllSucceed "navigateTo" $ testGroup "after navigation"
     [ testCase "findElement" $ do
         elemClient <- ioenv >>= \env -> iosess >>= fetchInputElement env . _sessClient
-        idAttr <- W.getSuccessValue <$> (W.getElementProperty elemClient "id")
+        idAttr <- W.getSuccessValue <$> W.getElementProperty elemClient "id"
         idAttr @?= "input-name"
 
     , testCaseSteps "Clear element" $ \step -> do

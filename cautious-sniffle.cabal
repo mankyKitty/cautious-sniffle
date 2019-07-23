@@ -55,6 +55,7 @@ library
                      , generics-sop
                      , bifunctors
                      , errors
+                     , time
 
   hs-source-dirs:      lib
   ghc-options:         -Wall

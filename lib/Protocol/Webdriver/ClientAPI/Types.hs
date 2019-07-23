@@ -8,15 +8,17 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 module Protocol.Webdriver.ClientAPI.Types
-  ( WDUri (..)
-  , encURI
-  , decURI
-
-  , TakeElementScreenshot (..)
-  , WDRect (..)
-  , ElementSendKeys (..)
+  ( TakeElementScreenshot (..)
   , CreateWindow (..)
+  , ElementSendKeys (..)
+  , ExecuteAsyncScript (..)
+  , ExecuteScript (..)
   , NewWindow (..)
+  , PerformActions (..)
+  , SendAlertText (..)
+  , SwitchToFrame (..)
+  , SwitchToWindow (..)
+  , WDRect (..)
 
   , WindowType (..)
   , encWindowType
@@ -27,14 +29,6 @@ module Protocol.Webdriver.ClientAPI.Types
   , decWindowHandle
   , printWindowHandle
   , checkWindowHandlePattern
-  
-  , SwitchToWindow (..)
-  , PerformActions (..)
-  , SendAlertText (..)
-  , AddCookie (..)
-  , ExecuteAsyncScript (..)
-  , ExecuteScript (..)
-  , SwitchToFrame (..)
 
   , module Protocol.Webdriver.ClientAPI.Types.Internal
   , module Protocol.Webdriver.ClientAPI.Types.ElementId
@@ -44,12 +38,12 @@ module Protocol.Webdriver.ClientAPI.Types
   , module Protocol.Webdriver.ClientAPI.Types.ProxySettings
   , module Protocol.Webdriver.ClientAPI.Types.Session
   , module Protocol.Webdriver.ClientAPI.Types.Timeout
+  , module Protocol.Webdriver.ClientAPI.Types.Cookies
+  , module Protocol.Webdriver.ClientAPI.Types.WDUri
   ) where
 
 import           Control.Error                                       (headErr)
-import           Control.Exception                                   (displayException,
-                                                                      fromException)
-import           Data.Bifunctor                                      (bimap)
+
 import           Data.Bool                                           (Bool)
 import           Data.Functor.Alt                                    ((<!>))
 import           Data.Functor.Contravariant                          ((>$<))
@@ -58,9 +52,9 @@ import qualified Data.Scientific                                     as Sci
 import           Data.Text                                           (Text)
 import qualified Data.Text                                           as T
 import           Data.Vector                                         (Vector)
+
 import qualified Text.ParserCombinators.ReadP                        as R
-import           Text.URI                                            (URI)
-import qualified Text.URI                                            as URI
+
 import qualified Waargonaut.Decode                                   as D
 import qualified Waargonaut.Encode                                   as E
 import           Waargonaut.Generic                                  (JsonDecode (..),
@@ -70,6 +64,8 @@ import           Waargonaut.Generic                                  (JsonDecode
 import           Waargonaut.Types.Json                               (Json)
 
 import           Generics.SOP.TH                                     (deriveGeneric)
+
+import           Protocol.Webdriver.ClientAPI.Types.Cookies
 import           Protocol.Webdriver.ClientAPI.Types.ElementId
 import           Protocol.Webdriver.ClientAPI.Types.Error
 import           Protocol.Webdriver.ClientAPI.Types.Internal
@@ -78,23 +74,7 @@ import           Protocol.Webdriver.ClientAPI.Types.LogSettings
 import           Protocol.Webdriver.ClientAPI.Types.ProxySettings
 import           Protocol.Webdriver.ClientAPI.Types.Session
 import           Protocol.Webdriver.ClientAPI.Types.Timeout
-
-newtype WDUri = WDUri
-  { _unWDUri :: URI }
-  deriving (Show, Eq)
-
-encURI :: Applicative f => E.Encoder f WDUri
-encURI = singleValueObj "url" (URI.render . _unWDUri >$< E.text)
-
-decURI :: Monad f => D.Decoder f WDUri
-decURI = withText (bimap (T.pack . errText . fromException) WDUri . URI.mkURI)
-  where
-    errText = maybe
-      "WDUri : Unknown Error parsing URI"
-      (\(URI.ParseException t) -> displayException t)
-
-instance JsonDecode WDJson WDUri where mkDecoder = pure decURI
-instance JsonEncode WDJson WDUri where mkEncoder = pure encURI
+import           Protocol.Webdriver.ClientAPI.Types.WDUri
 
 -- Each browsing context has an associated window handle which uniquely identifies it. This must be a String and must not be "current".
 data WindowHandle
@@ -238,13 +218,6 @@ data ExecuteAsyncScript = ExecuteAsyncScript
 deriveGeneric ''ExecuteAsyncScript
 instance JsonEncode WDJson ExecuteAsyncScript
 instance JsonDecode WDJson ExecuteAsyncScript
-
-newtype AddCookie = AddCookie
-  { _unAddCookie :: Json }
-  deriving (Show, Eq)
-deriveGeneric ''AddCookie
-instance JsonEncode WDJson AddCookie
-instance JsonDecode WDJson AddCookie
 
 newtype PerformActions = PerformActions
   { _unPerformActions :: (Vector Json) }

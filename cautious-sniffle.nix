@@ -5,7 +5,7 @@
 , http-client, lens, modern-uri, mtl, natural, pretty, process
 , scientific, scotty, semigroupoids, servant, servant-client
 , servant-client-core, servant-waargonaut, stdenv, tasty
-, tasty-hedgehog, tasty-hunit, template-haskell, text, vector
+, tasty-hedgehog, tasty-hunit, template-haskell, text, time, vector
 , waargonaut, warp
 }:
 mkDerivation {
@@ -20,8 +20,8 @@ mkDerivation {
     dependent-sum-template distributive errors generics-sop
     haskell-src-exts hedgehog http-client lens modern-uri mtl natural
     pretty scientific semigroupoids servant servant-client
-    servant-client-core servant-waargonaut template-haskell text vector
-    waargonaut
+    servant-client-core servant-waargonaut template-haskell text time
+    vector waargonaut
   ];
   executableHaskellDepends = [
     base bytestring directory lens text waargonaut
