@@ -3,7 +3,14 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
-module Protocol.Webdriver.ClientAPI.Types.Cookies where
+module Protocol.Webdriver.ClientAPI.Types.Cookies
+  ( Cookie
+  , CookieKey (..)
+  , encCookie
+  , decCookie
+  , cookieKeys
+  , cookieKeyEnc
+  ) where
 
 import           Control.Arrow                               ((&&&))
 import           Data.Function                               ((&))
@@ -24,7 +31,7 @@ import           Protocol.Webdriver.ClientAPI.Types.Internal (WDJson,
                                                               dmatKey,
                                                               encodeDMap, (~=>))
 
-import           Protocol.Webdriver.ClientAPI.Types.WDUri      (WDUri, decURI,
+import           Protocol.Webdriver.ClientAPI.Types.WDUri    (WDUri, decURI,
                                                               encURI)
 
 import qualified Waargonaut.Decode                           as D
