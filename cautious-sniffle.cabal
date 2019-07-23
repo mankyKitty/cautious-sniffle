@@ -12,7 +12,37 @@ maintainer:          sclhiannan@gmail.com
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
 
+common base-deps
+  build-depends:
+    base64-bytestring       >= 1.0.0 && < 1.1,
+    bytestring              >= 0.10.8 && < 0.11,
+    bifunctors              >= 5.5.4 && < 5.6,
+    containers              >= 0.6.0 && < 0.7,
+    clay                    >= 0.13.1 && < 0.14,
+    mtl                     >= 2.2.2 && < 2.3,
+    text                    >= 1.2.3 && < 1.3,
+    contravariant           >= 1.5.2 && < 1.6,
+    dependent-map           >= 0.2.5 && < 0.3,
+    dependent-sum           >= 0.5 && < 0.6,
+    dependent-sum-template  >= 0.0.0 && < 0.1,
+    errors                  >= 2.3.0 && < 2.4,
+    generics-sop            >= 0.4.0 && < 0.5,
+    http-client             >= 0.5.14 && < 0.6,
+    time                    >= 1.8.0 && < 1.9,
+    lens                    >= 4.17.1 && < 4.18,
+    semigroupoids           >= 5.3.2 && < 5.4,
+    vector                  >= 0.12.0 && < 0.13,
+    modern-uri              >= 0.3.0 && < 0.4,
+    scientific              >= 0.3.6 && < 0.4,
+    natural                 >= 0.3.0 && < 0.4,
+    servant                 >= 0.15 && < 0.16,
+    servant-client          >= 0.15 && < 0.16,
+    servant-client-core     >= 0.15 && < 0.16,
+    servant-waargonaut      >= 0.6.0 && < 0.7,
+    waargonaut              >= 0.6 && < 0.8
+
 library
+  import: base-deps
   exposed-modules:     Protocol.Webdriver.ClientAPI
                      , Protocol.Webdriver.ClientAPI.SessionAPI
                      , Protocol.Webdriver.ClientAPI.Types
@@ -31,93 +61,14 @@ library
                      , Protocol.Webdriver.ClientAPI.Types.ProxySettings
 
   build-depends:       base >=4.11 && <4.13
-                     , text
-                     , waargonaut >= 0.6 && < 0.8
-                     , servant-waargonaut
-                     , semigroupoids
-                     , natural
-                     , lens
-                     , mtl
-                     , text
-                     , bytestring
-                     , containers
-                     , vector
-                     , http-client
-                     , scientific
-                     , servant
-                     , servant-client >= 0.14
-                     , servant-client-core >= 0.14
-                     , dependent-map
-                     , dependent-sum
-                     , dependent-sum-template
-                     , contravariant
-                     , base64-bytestring
-                     , clay
-                     , modern-uri
-                     , generics-sop
-                     , bifunctors
-                     , errors
-                     , time
 
   hs-source-dirs:      lib
   ghc-options:         -Wall
 
   default-language:    Haskell2010
 
-library generate-wd-hs
-  exposed-modules:     Hedgehog.WebDriver
-                     , Protocol.Webdriver.Types
-                     , Protocol.Webdriver.HaskGen
-
-                     , Protocol.Webdriver.Decoders
-
-                     , Protocol.Webdriver.Generate.Hask
-                     , Protocol.Webdriver.Generate.Streengs
-                     , Protocol.Webdriver.Generate.Internal
-                     , Protocol.Webdriver.Generate
-
-  -- other-modules:
-  -- other-extensions:
-  build-depends:       base >=4.11 && <4.13
-                     , cautious-sniffle
-                     , hedgehog
-                     , text
-                     , waargonaut >= 0.6 && < 0.8
-                     , natural
-                     , lens
-                     , mtl
-                     , text
-                     , bytestring
-                     , attoparsec
-                     , containers
-                     , distributive
-                     , haskell-src-exts
-                     , template-haskell >= 2.13
-                     , pretty
-
-  hs-source-dirs:      gen-wd-hs
-  ghc-options:         -Wall
-
-  default-language:    Haskell2010
-
-executable gen-hs
-  default-language:    Haskell2010
-  hs-source-dirs:      exe
-
-  main-is:             Main.hs
-
-  build-depends:       base >=4.11 && <4.13
-                     , cautious-sniffle
-                     , generate-wd-hs
-                     , text
-                     , lens
-                     , bytestring
-                     , waargonaut >= 0.6 && < 0.8
-                     , directory >= 1.3
-
-  ghc-options:         -Wall
-
 test-suite wd-tests
+  import:              base-deps
   other-modules:       General.Types
                      , General.ManageDriver
                      , General.TestOpts
@@ -129,30 +80,16 @@ test-suite wd-tests
 
   main-is:             Main.hs
   build-depends:       base >=4.11 && <4.13
+
                      , cautious-sniffle
-                     , exceptions
-                     , tasty
-                     , mtl
-                     , tasty-hunit
-                     , tasty-hedgehog
-                     , hedgehog
-                     , cautious-sniffle
-                     , lens
-                     , text >= 1.2
-                     , containers >= 0.5
-                     , http-client
-                     , servant
-                     , servant-client
-                     , servant-client-core >= 0.14
-                     , waargonaut >= 0.6 && < 0.8
-                     , vector
-                     , dependent-map
-                     , dependent-sum
-                     , clay
-                     , modern-uri
-                     , warp
-                     , scotty
-                     , process
+                     , tasty >= 1.2
+                     , tasty-hunit >= 0.9 && < 0.11
+                     , tasty-hedgehog >= 1.0 && < 1.2
+                     , hedgehog >= 1.0 && < 1.2
+                     , warp >= 3.2 && < 4
+                     , scotty >= 0.10 && < 0.13
+                     , process >= 1.6 && < 1.8
+                     , exceptions >= 0.10
 
   type:                exitcode-stdio-1.0
 
@@ -165,20 +102,13 @@ test-suite example
   main-is:             Example.hs
   build-depends:       base >=4.11 && <4.13
                      , cautious-sniffle
-                     , hedgehog
-                     , lens
-                     , text >= 1.2
-                     , containers >= 0.5
-                     , http-client
-                     , servant
-                     , servant-client
-                     , servant-client-core
-                     , waargonaut
-                     , vector
-                     , dependent-map
-                     , dependent-sum
-                     , clay
-                     , modern-uri
+                     , waargonaut >= 0.6 && < 0.8
+                     , text >= 1.2.3 && < 1.3
+                     , http-client >= 0.5.14 && < 0.6
+                     , servant-client >= 0.15 && < 0.16
+                     , servant-client-core >= 0.15 && < 0.16
+                     , clay >= 0.13.1 && < 0.14
+                     , modern-uri >= 0.3.0 && < 0.4
 
   type:                exitcode-stdio-1.0
 
