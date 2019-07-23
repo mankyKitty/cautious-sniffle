@@ -12,19 +12,19 @@ import qualified Data.Text.Lazy                                          as T
 
 import           Control.Monad.IO.Class                                  (MonadIO,
                                                                           liftIO)
+
+import           Protocol.Webdriver.ClientAPI.Types                      (WDJson,
+                                                                          (~=>))
 import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
-import           Protocol.Webdriver.ClientAPI.Types.Internal             (Value (unValue),
-                                                                          WDJson,
-                                                                          (~=>))
-import qualified Protocol.Webdriver.ClientAPI.Types.LocationStrategy     as WD
-import qualified Protocol.Webdriver.ClientAPI.Types.Session              as WD
+
 
 import qualified Network.HTTP.Client                                     as HTTP
 import           Servant.Client                                          (mkClientEnv,
                                                                           runClientM)
 import qualified Servant.Client                                          as C
+import           Servant.Client.Generic                                  (AsClientT)
 
 import           Clay.Elements                                           (input)
 import           Clay.Selector                                           (byId,
@@ -57,7 +57,7 @@ printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
-usingSession :: WD.SessionId -> G.SessionClient -> C.ClientM ()
+usingSession :: WD.SessionId -> G.SessionAPI (AsClientT C.ClientM) -> C.ClientM ()
 usingSession sessId G.SessionAPI {..} = do
   let
     buttonId = "newButtonName"
@@ -65,25 +65,25 @@ usingSession sessId G.SessionAPI {..} = do
 
   url <- URI.mkURI "http://uitestingplayground.com/textinput"
 
-  _         <- navigateTo (WD.WDUri url)
+  _ <- navigateTo (WD.WDUri url)
 
-  textInput <- fmap (G.elementClient sessId . unValue) . findElement
+  textInput <- fmap (G.elementClient sessId . WD.getSuccessValue) . findElement
     . WD.ByCss $ input # byId buttonId
 
-  _         <- G.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
+  _ <- G.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
 
-  attr     <- G.getElementAttribute textInput "id"
-  unless (unValue attr == buttonId) $ error "attribute mismatch"
+  attr <- G.getElementAttribute textInput "id"
+  unless (WD.getSuccessValue attr == buttonId) $ error "attribute mismatch"
 
-  prop     <- G.getElementProperty textInput "value"
-  unless (unValue prop == textInputValue) $ error "text input value mismatch"
+  prop <- G.getElementProperty textInput "value"
+  unless (WD.getSuccessValue prop == textInputValue) $ error "text input value mismatch"
 
   void deleteSession
 
 usingGenerics :: C.ClientM ()
 usingGenerics = G.newSession G.wdClient (newSess firefox) >>= \s ->
   let
-    sid = WD._sessionId (unValue s)
+    sid = WD._sessionId (WD.getSuccessValue s)
   in
     usingSession sid (G.sessionClient sid)
 

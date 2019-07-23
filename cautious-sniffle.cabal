@@ -19,6 +19,8 @@ library
                      , Protocol.Webdriver.ClientAPI.Types.Session
                      , Protocol.Webdriver.ClientAPI.Types.Timeout
                      , Protocol.Webdriver.ClientAPI.Types.Error
+                     , Protocol.Webdriver.ClientAPI.Types.WDUri
+                     , Protocol.Webdriver.ClientAPI.Types.Cookies
                      , Protocol.Webdriver.ClientAPI.Types.LocationStrategy 
                      , Protocol.Webdriver.ClientAPI.Types.ElementId
                      , Protocol.Webdriver.ClientAPI.Types.Internal
@@ -159,27 +161,28 @@ test-suite wd-tests
 
   default-language:    Haskell2010
 
--- test-suite example
---   main-is:             Example.hs
---   build-depends:       base >=4.11 && <4.12
---                      , cautious-sniffle
---                      , hedgehog
---                      , lens
---                      , text >= 1.2
---                      , containers >= 0.5
---                      , http-client
---                      , servant
---                      , servant-client
---                      , waargonaut >= 0.6 && < 0.7
---                      , vector
---                      , dependent-map
---                      , dependent-sum
---                      , clay
---                      , modern-uri
+test-suite example
+  main-is:             Example.hs
+  build-depends:       base >=4.11 && <4.13
+                     , cautious-sniffle
+                     , hedgehog
+                     , lens
+                     , text >= 1.2
+                     , containers >= 0.5
+                     , http-client
+                     , servant
+                     , servant-client
+                     , servant-client-core
+                     , waargonaut
+                     , vector
+                     , dependent-map
+                     , dependent-sum
+                     , clay
+                     , modern-uri
 
---   type:                exitcode-stdio-1.0
+  type:                exitcode-stdio-1.0
 
---   hs-source-dirs:      test
---   ghc-options:         -Wall -O2
+  hs-source-dirs:      test
+  ghc-options:         -Wall -O2
 
---   default-language:    Haskell2010
+  default-language:    Haskell2010
