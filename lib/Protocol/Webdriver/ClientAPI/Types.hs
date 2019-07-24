@@ -16,10 +16,14 @@ module Protocol.Webdriver.ClientAPI.Types
   , NewWindow (..)
   , PerformActions (..)
   , SendAlertText (..)
-  , SwitchToFrame (..)
   , SwitchToWindow (..)
   , WDRect (..)
 
+  , SwitchToFrame (..)
+  , FrameId (..) 
+  , encFrameId
+  , decFrameId
+  
   , WindowType (..)
   , encWindowType
   , decWindowType
@@ -43,6 +47,8 @@ module Protocol.Webdriver.ClientAPI.Types
   ) where
 
 import           Control.Error                                       (headErr)
+
+import GHC.Word (Word16)
 
 import           Data.Bool                                           (Bool)
 import           Data.Functor.Alt                                    ((<!>))
@@ -175,13 +181,34 @@ deriveGeneric ''WDRect
 instance JsonEncode WDJson WDRect
 instance JsonDecode WDJson WDRect
 
+data FrameId
+  = NullFrame
+  | Number Word16
+  | FrameElement ElementId
+  deriving (Show, Eq)
+deriveGeneric ''FrameId
+
+encFrameId :: Applicative f => E.Encoder f FrameId
+encFrameId = E.encodeA $ \case
+  NullFrame      -> E.runEncoder E.null ()
+  Number n       -> E.runEncoder E.integral n
+  FrameElement e -> E.runEncoder encElementId e
+
+decFrameId :: Monad f => D.Decoder f FrameId
+decFrameId = (NullFrame <$ D.null) <!> (Number <$> D.integral) <!> (FrameElement <$> decElementId)
+
+instance JsonEncode WDJson FrameId where mkEncoder = pure encFrameId
+instance JsonDecode WDJson FrameId where mkDecoder = pure decFrameId
+
 newtype SwitchToFrame = SwitchToFrame
-  { _unSwitchToFrame :: Json }
+  { _switchToFrameId :: FrameId }
   deriving (Show, Eq)
 deriveGeneric ''SwitchToFrame
 
-instance JsonEncode WDJson SwitchToFrame
-instance JsonDecode WDJson SwitchToFrame
+instance JsonEncode WDJson SwitchToFrame where
+  mkEncoder = gEncoder $ trimWaargOpts "_switchToFrame"
+instance JsonDecode WDJson SwitchToFrame where
+  mkDecoder = gDecoder $ trimWaargOpts "_switchToFrame"
 
 newtype ElementSendKeys = ElementSendKeys
   { _elementSendKeysValue :: Text }
@@ -203,7 +230,7 @@ instance JsonDecode WDJson TakeElementScreenshot
 
 data ExecuteScript = ExecuteScript
   { _executeScriptScript :: Text
-  , _executeScriptArgs   :: (Vector Json)
+  , _executeScriptArgs   :: Vector Json
   }
   deriving (Show, Eq)
 deriveGeneric ''ExecuteScript
@@ -212,7 +239,7 @@ instance JsonDecode WDJson ExecuteScript
 
 data ExecuteAsyncScript = ExecuteAsyncScript
   { _executeAsyncScriptScript :: Text
-  , _executeAsyncScriptArgs   :: (Vector Json)
+  , _executeAsyncScriptArgs   :: Vector Json
   }
   deriving (Show, Eq)
 deriveGeneric ''ExecuteAsyncScript
@@ -220,7 +247,7 @@ instance JsonEncode WDJson ExecuteAsyncScript
 instance JsonDecode WDJson ExecuteAsyncScript
 
 newtype PerformActions = PerformActions
-  { _unPerformActions :: (Vector Json) }
+  { _unPerformActions :: Vector Json }
   deriving (Show, Eq)
 deriveGeneric ''PerformActions
 instance JsonEncode WDJson PerformActions

@@ -1,36 +1,23 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Protocol.Webdriver.ClientAPI.Types.Cookies
   ( Cookie
-  , CookieKey (..)
+  , HasCookie (..)
   , encCookie
   , decCookie
-  , cookieKeys
-  , cookieKeyEnc
   ) where
 
-import           Control.Arrow                               ((&&&))
-import           Data.Function                               ((&))
-import           Data.Functor                                ((<&>))
+import           Control.Lens                                (makeClassy)
 import           Data.Functor.Contravariant                  ((>$<))
 
 import           Data.Text                                   (Text)
 
-import           Data.Dependent.Map                          (DMap)
-import           Data.Functor.Identity                       (Identity (..))
-import           Data.GADT.Compare.TH
-import           Data.GADT.Show.TH
-
 import           Data.Time.Clock.POSIX                       (POSIXTime)
 
-import           Protocol.Webdriver.ClientAPI.Types.Internal (WDJson,
-                                                              decodeDMap,
-                                                              dmatKey,
-                                                              encodeDMap, (~=>))
-
+import           Protocol.Webdriver.ClientAPI.Types.Internal (WDJson)
 import           Protocol.Webdriver.ClientAPI.Types.WDUri    (WDUri, decURI,
                                                               encURI)
 
@@ -40,60 +27,40 @@ import           Waargonaut.Generic                          (JsonDecode (..),
                                                               JsonEncode (..))
 import           Waargonaut.Types.Json                       (Json)
 
-data CookieKey v where
-  CookieName       :: CookieKey Text
-  CookieValue      :: CookieKey Json
-  CookiePath       :: CookieKey WDUri
-  CookieDomain     :: CookieKey Text
-  CookieSecureOnly :: CookieKey Bool
-  CookieHttpOnly   :: CookieKey Bool
-  CookieExpiryTime :: CookieKey POSIXTime
+import           Generics.SOP.TH                             (deriveGeneric)
 
-deriveGShow ''CookieKey
-deriveGEq ''CookieKey
-deriveGCompare ''CookieKey
-deriveEqTagIdentity ''CookieKey
-deriveShowTagIdentity ''CookieKey
-
-type Cookie = DMap CookieKey Identity
-
-cookieKeys :: CookieKey v -> Text
-cookieKeys CookieName       = "name"
-cookieKeys CookieValue      = "value"
-cookieKeys CookiePath       = "path"
-cookieKeys CookieDomain     = "domain"
-cookieKeys CookieSecureOnly = "secure"
-cookieKeys CookieHttpOnly   = "httpOnly"
-cookieKeys CookieExpiryTime = "expiry"
-
-cookieKeyEnc :: Applicative f => CookieKey v -> E.Encoder f v
-cookieKeyEnc CookieName       = E.text
-cookieKeyEnc CookieValue      = E.json
-cookieKeyEnc CookiePath       = encURI
-cookieKeyEnc CookieDomain     = E.text
-cookieKeyEnc CookieSecureOnly = E.bool
-cookieKeyEnc CookieHttpOnly   = E.bool
-cookieKeyEnc CookieExpiryTime = floor >$< E.int
+data Cookie = Cookie
+  { _cookieName       :: Text
+  , _cookieValue      :: Json
+  , _cookiePath       :: Maybe WDUri
+  , _cookieDomain     :: Maybe Text
+  , _cookieSecureOnly :: Maybe Bool
+  , _cookieHttpOnly   :: Maybe Bool
+  , _cookieExpiryTime :: Maybe POSIXTime
+  }
+  deriving (Eq, Show)
+makeClassy ''Cookie
+deriveGeneric ''Cookie
 
 decCookie :: Monad f => D.Decoder f Cookie
-decCookie = D.withCursor $ \c -> do
-  nom <- D.fromKey "name" D.text c
-  val <- D.fromKey "value" D.json c
-  D.focus optionals c <&> \rest -> rest
-    & CookieName ~=> nom
-    & CookieValue ~=> val
-  where
-    ak = dmatKey cookieKeys
-    optionals = decodeDMap
-      [ ak CookiePath decURI
-      , ak CookieDomain D.text
-      , ak CookieSecureOnly D.bool
-      , ak CookieHttpOnly D.bool
-      , ak CookieExpiryTime (fromInteger . fromIntegral <$> D.int)
-      ]
+decCookie = Cookie
+  <$> D.atKey "name" D.text
+  <*> D.atKey "value" D.json
+  <*> D.atKeyOptional "path" decURI
+  <*> D.atKeyOptional "domain" D.text
+  <*> D.atKeyOptional "secure" D.bool
+  <*> D.atKeyOptional "httpOnly" D.bool
+  <*> D.atKeyOptional "expiry" (fromInteger . fromIntegral <$> D.int)
 
 encCookie :: Applicative f => E.Encoder f Cookie
-encCookie = encodeDMap (cookieKeys &&& cookieKeyEnc)
+encCookie = E.mapLikeObj $ \c ->
+  E.atKey' "name" E.text (_cookieName c) .
+  E.atKey' "value" E.json (_cookieValue c) .
+  E.atOptKey' "path" encURI (_cookiePath c) .
+  E.atOptKey' "domain" E.text (_cookieDomain c) .
+  E.atOptKey' "secure" E.bool (_cookieSecureOnly c) .
+  E.atOptKey' "httpOnly" E.bool (_cookieHttpOnly c) .
+  E.atOptKey' "expiry" (floor >$< E.int) (_cookieExpiryTime c)
 
-instance JsonDecode WDJson (DMap CookieKey Identity) where mkDecoder = pure decCookie
-instance JsonEncode WDJson (DMap CookieKey Identity) where mkEncoder = pure encCookie
+instance JsonDecode WDJson Cookie where mkDecoder = pure decCookie
+instance JsonEncode WDJson Cookie where mkEncoder = pure encCookie
