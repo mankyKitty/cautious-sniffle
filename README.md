@@ -21,10 +21,9 @@ specification. Error and success from Webdriver are described as follows:
 
 Or
 
-> " A success value has an associated data field which encapsulates the value returned"
+> "A success value has an associated data field which encapsulates the value returned"
 
-A response that is not in the 2xx range is treated as a request failure and results in an
-error from Servant. 
+A response that is not in the 2xx range is treated as a request failure and results in an error from Servant. 
 
 A successful request will still return the success "object", which is a trivial wrapper
 over the actual result. This package keeps to this pattern and uses the equally trivial `newtype Success a`.
@@ -45,7 +44,6 @@ firefox = WD.firefox
       & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
       & FF.FFArgs ~=> ["--headless"]
 ```
-
 
 ## Records of functions
 
