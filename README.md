@@ -96,12 +96,6 @@ webdriverExample = do
       -- Using the found element ID, create a element client for the current session.
       <&> (WD._mkElement core sessClient . WD.getSuccessValue)
 
-    propEq ele prop orig msg = do
-      -- Try to retrieve the specified property from the given element.
-      p <- WD.getElementProperty ele prop
-      -- Check if the value of that property matches our expectations.
-      unless (WD.getSuccessValue p == orig) $ error msg
-
   -- Create element clients for some elements on the web page.
   button <- getElem Clay.button buttonId
   textInput <- getElem Clay.input textInputId
@@ -111,8 +105,11 @@ webdriverExample = do
     -- Send a click to the button element
   _ <- WD.elementClick button
 
-    -- As per the playground exercise, check that the button has the input text as the new value.
-  _ <- propEq button "innerHTML" textInputValue "button value mismatch"
+  -- As per the playground exercise, check that the button has the input text as the new value.
+  -- Retrieve the specified property from the given element.
+  p <- WD.getElementProperty button "innerHTML"
+  -- Check if the value of that property matches our expectations.
+  unless (WD.getSuccessValue p == textInputValue) $ error "Button text value incorrect"
 
     -- Close our session
   void $ WD.deleteSession sessClient
