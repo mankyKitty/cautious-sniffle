@@ -2,10 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE GADTs #-}
 module Main where
 
 import           Control.Monad                                           (unless,
                                                                           void)
+import Data.Functor ((<&>))
 import           Data.Function                                           ((&))
 import qualified Data.Text.IO                                            as TIO
 import qualified Data.Text.Lazy                                          as T
@@ -15,6 +17,7 @@ import           Control.Monad.IO.Class                                  (MonadI
 
 import           Protocol.Webdriver.ClientAPI.Types                      (WDJson,
                                                                           (~=>))
+import qualified Protocol.Webdriver.ClientAPI                            as WD
 import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
@@ -24,19 +27,19 @@ import qualified Network.HTTP.Client                                     as HTTP
 import           Servant.Client                                          (mkClientEnv,
                                                                           runClientM)
 import qualified Servant.Client                                          as C
-import           Servant.Client.Generic                                  (AsClientT)
 
-import           Clay.Elements                                           (input)
+import qualified Clay.Elements                                           as Clay
 import           Clay.Selector                                           (byId,
                                                                           ( # ))
 import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
 
-import qualified Protocol.Webdriver.ClientAPI                            as G
 
 baseUrl :: C.BaseUrl
-baseUrl = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
+baseUrl = C.BaseUrl C.Http "localhost" 4444
+  ""                            -- When using geckodriver directly
+  -- "/wd/hub"                     -- When using selenium
 
 firefox :: WD.Capabilities
 firefox = WD.firefox
@@ -44,53 +47,82 @@ firefox = WD.firefox
   & WD.FirefoxSettings ~=> ffSettings
   where
     ffSettings = mempty
-        -- I needed to add this as Mozilla removed this setting but my
-        -- geckdriver keeps trying to set it to an invalid value and Marionette
-        -- crashes. :<
+        -- I needed to add this as Mozilla removed this setting, but my
+        -- geckdriver keeps trying to set it to an invalid value and Marionette crashes. :<
       & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
       & FF.FFArgs ~=> ["--headless"]
-
-newSess :: WD.Capabilities -> WD.NewSession
-newSess cap = WD.NewSession cap Nothing Nothing
 
 printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
 
-usingSession :: WD.SessionId -> G.SessionAPI (AsClientT C.ClientM) -> C.ClientM ()
-usingSession sessId G.SessionAPI {..} = do
+webdriverExample :: C.ClientM ()
+webdriverExample = do
   let
-    buttonId = "newButtonName"
+    buttonId = "updatingButton"
+    textInputId = "newButtonName"
     textInputValue = "Fred"
 
+    core = WD.mkWDCoreClientM
+
+  -- Create the session within the driver
+  newSess <- WD.getSuccessValue <$> WD.newSession
+    (WD._core core)
+    -- we're going to use FireFox so drop in the FireFox capabilities
+    (WD.NewSession firefox Nothing Nothing)
+
+  -- We've created a session, so use the session id to access our client.
+  -- NB: This is the only time we'll need to explicity handle an ID
+  let sessClient = WD._mkSession core (WD._sessionId newSess)
+
+  -- We use the 'modern-uri' package to handle the creation of correct URLs
+  -- This can also be created inline using quasiquotes: [uri|http://foo.com.au|]
   url <- URI.mkURI "http://uitestingplayground.com/textinput"
 
-  _ <- navigateTo (WD.WDUri url)
+  -- Tell the driver to load the page
+  _ <- WD.navigateTo sessClient (WD.WDUri url)
 
-  textInput <- fmap (G.elementClient sessId . WD.getSuccessValue) . findElement
-    . WD.ByCss $ input # byId buttonId
-
-  _ <- G.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
-
-  attr <- G.getElementAttribute textInput "id"
-  unless (WD.getSuccessValue attr == buttonId) $ error "attribute mismatch"
-
-  prop <- G.getElementProperty textInput "value"
-  unless (WD.getSuccessValue prop == textInputValue) $ error "text input value mismatch"
-
-  void deleteSession
-
-usingGenerics :: C.ClientM ()
-usingGenerics = G.newSession G.wdClient (newSess firefox) >>= \s ->
+  -- Some helper functions
   let
-    sid = WD._sessionId (WD.getSuccessValue s)
-  in
-    usingSession sid (G.sessionClient sid)
+    getElem elemTag eid =
+      -- Given a CSS identifier, locate an element on the page.
+      WD.findElement sessClient (WD.ByCss $ elemTag # byId eid)
+      -- Using the found element ID, create a element client for the current session.
+      <&> (WD._mkElement core sessClient . WD.getSuccessValue)
+
+    propEq ele prop orig msg = do
+      -- Try to retrieve the specified property from the given element.
+      p <- WD.getElementProperty ele prop
+      -- Check if the value of that property matches our expectations.
+      unless (WD.getSuccessValue p == orig) $ error msg
+
+  -- Create element clients for some elements on the web page.
+  button <- getElem Clay.button buttonId
+  textInput <- getElem Clay.input textInputId
+
+    -- Send some input to the text field
+  _ <- WD.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
+    -- Send a click to the button element
+  _ <- WD.elementClick button
+
+    -- As per the playground exercise, check that the button has the input text as the new value.
+  _ <- propEq button "innerHTML" textInputValue "button value mismatch"
+
+    -- Check that the text field has the expected input
+  _ <- propEq textInput "value" textInputValue "text input value mismatch"
+
+    -- Clear the text field
+  _ <- WD.elementClear textInput
+    -- Check that the text field has been cleared.
+  _ <- propEq textInput "value" "" "text input should be empty"
+
+    -- Close our session
+  void $ WD.deleteSession sessClient
 
 main :: IO ()
 main = do
   mgr <- HTTP.newManager HTTP.defaultManagerSettings
-  res <- runClientM usingGenerics $ mkClientEnv mgr baseUrl
+  res <- runClientM webdriverExample $ mkClientEnv mgr baseUrl
   case res of
     Left err -> print err >> error "Bugger"
     Right _  -> pure ()

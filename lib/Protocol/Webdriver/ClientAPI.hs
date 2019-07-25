@@ -1,12 +1,18 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE DeriveGeneric    #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies     #-}
-{-# LANGUAGE TypeOperators    #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE DeriveGeneric          #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeApplications       #-}
+{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE TypeOperators          #-}
 module Protocol.Webdriver.ClientAPI
   ( -- * Types
     WebDriverAPI (..)
+  , WDCore (..)
+  , HasWDCore (..)
 
     -- * APIs
   , apiProxy
@@ -17,10 +23,13 @@ module Protocol.Webdriver.ClientAPI
 
     -- * Helpers
   , defaultWebdriverClient
+  , mkWDCoreClientM
 
     -- * Re-exports
   , module Protocol.Webdriver.ClientAPI.SessionAPI
   ) where
+
+import           Control.Lens                            (makeClassy)
 
 import qualified GHC.Generics                            as GHC
 
@@ -66,3 +75,21 @@ wdClient = fromServant $ C.client apiProxy
 
 defaultWebdriverClient :: BaseUrl
 defaultWebdriverClient = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
+
+data WDCore m = WDCore
+  { _core      :: WebDriverAPI (AsClientT m)
+  , _mkSession :: SessionId -> SessionAPI (AsClientT m)
+  , _mkWindow  :: SessionAPI (AsClientT m) -> WindowAPI (AsClientT m)
+  , _mkElement :: SessionAPI (AsClientT m) -> ElementId -> ElementAPI (AsClientT m)
+  }
+makeClassy ''WDCore
+
+mkWDCoreClientM :: WDCore ClientM
+mkWDCoreClientM =
+  let
+    wdcore = wdClient
+  in
+    WDCore wdcore
+    (fromServant . withSession wdcore)
+    (fromServant . withWindow)
+    (\sess -> fromServant . withElement sess)

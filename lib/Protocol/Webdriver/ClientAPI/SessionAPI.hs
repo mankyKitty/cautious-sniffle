@@ -27,10 +27,12 @@ import           Servant.API.Generic
 
 import           Protocol.Webdriver.ClientAPI.Types
 
+import           Servant.API.Client.HollowBody              (HollowBody)
+
 data ElementAPI route = ElementAPI
   { getElementAttribute     :: route :- "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success Text)
-  , elementClear            :: route :- "clear" :> Post '[WaargJSON WDJson] (Success ())
-  , elementClick            :: route :- "click" :> Post '[WaargJSON WDJson] (Success ())
+  , elementClear            :: route :- "clear" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
+  , elementClick            :: route :- "click" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
   , getElementCSSValue      :: route :- "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] (Success Text)
   , isElementDisplayed      :: route :- "displayed" :> Get '[WaargJSON WDJson] (Success Bool)
   , findElementFromElement  :: route :- "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Success ElementId)
@@ -69,8 +71,8 @@ windowApi = genericApi (Proxy @WindowAPI)
 data SessionAPI route = SessionAPI
   { releaseActions          :: route :- "actions" :> Delete '[WaargJSON WDJson] (Success ())
   , performActions          :: route :- "actions" :> ReqBody '[WaargJSON WDJson] PerformActions :> Post '[WaargJSON WDJson] (Success ())
-  , acceptAlert             :: route :- "alert" :> "accept" :> Post '[WaargJSON WDJson] (Success ())
-  , dismissAlert            :: route :- "alert" :> "dismiss" :> Post '[WaargJSON WDJson] (Success ())
+  , acceptAlert             :: route :- "alert" :> "accept" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
+  , dismissAlert            :: route :- "alert" :> "dismiss" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
   , getAlertText            :: route :- "alert" :> "text" :> Get '[WaargJSON WDJson] (Success Text)
   , sendAlertText           :: route :- "alert" :> "text" :> ReqBody '[WaargJSON WDJson] SendAlertText :> Post '[WaargJSON WDJson] (Success ())
   , back                    :: route :- "back" :> Post '[WaargJSON WDJson] (Success ())

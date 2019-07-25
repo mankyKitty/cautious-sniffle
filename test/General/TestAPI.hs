@@ -15,9 +15,8 @@ import           Servant.API.Generic
 import qualified Servant.Client               as C
 import           Servant.Client.Generic       (genericClientHoist)
 
+import Protocol.Webdriver.ClientAPI (WDCore (..))
 import qualified Protocol.Webdriver.ClientAPI as W
-
-import           General.Types                (WDCore (..))
 
 liftThrow :: (MonadThrow m, MonadIO m) => C.ClientEnv -> C.ClientM a -> m a
 liftThrow env = liftIO . flip C.runClientM env >=> either throwM pure

@@ -7,7 +7,6 @@
 module General.Types
   ( Model (..)
   , Env (..)
-  , WDCore (..)
   , HasModel (..)
   , WDRun (..)
   , Sess (..)
@@ -16,36 +15,30 @@ module General.Types
   , chromeSession
   ) where
 
-import           Control.Concurrent                         (ThreadId)
-import           Control.Monad.IO.Class                     (MonadIO)
-import           System.Process                             (ProcessHandle)
+import           Control.Concurrent                              (ThreadId)
+import           Control.Monad.IO.Class                          (MonadIO)
+import           System.Process                                  (ProcessHandle)
 
-import           Control.Lens.TH                            (makeClassy)
-import           Data.Kind                                  (Type)
+import           Control.Lens.TH                                 (makeClassy)
+import           Data.Kind                                       (Type)
 
-import           Data.Text                                  (Text)
+import           Data.Text                                       (Text)
 
-import           Servant.Client                             (ClientM, ClientEnv,
-                                                             ServantError)
-import           Servant.Client.Generic                     (AsClientT)
+import           Servant.Client                                  (ClientEnv,
+                                                                  ClientM,
+                                                                  ServantError)
+import           Servant.Client.Generic                          (AsClientT)
 
-import           Hedgehog                                   (MonadTest, Opaque,
-                                                             Var)
+import           Hedgehog                                        (MonadTest,
+                                                                  Opaque, Var)
 
-import           Protocol.Webdriver.ClientAPI               (WebDriverAPI, WindowAPI, ElementAPI,
-                                                             SessionAPI)
-import           Protocol.Webdriver.ClientAPI.Types.Session (SessionId, NewSession (..))
-import           Protocol.Webdriver.ClientAPI.Types.ElementId (ElementId)
+import           Protocol.Webdriver.ClientAPI                    (ElementAPI,
+                                                                  SessionAPI,
+                                                                  WDCore)
+import           Protocol.Webdriver.ClientAPI.Types.Session      (NewSession (..),
+                                                                  SessionId)
 
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities as W
-
-data WDCore m = WDCore
-  { _core      :: WebDriverAPI (AsClientT m)
-  , _mkSession :: SessionId -> SessionAPI (AsClientT m)
-  , _mkWindow  :: SessionAPI (AsClientT m) -> WindowAPI (AsClientT m)
-  , _mkElement :: SessionAPI (AsClientT m) -> ElementId -> ElementAPI (AsClientT m)
-  }
-makeClassy ''WDCore
 
 data Sess = Sess
   { _sessId     :: SessionId

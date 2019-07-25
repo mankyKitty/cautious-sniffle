@@ -31,6 +31,7 @@ import           Hedgehog                           (Callback (..),
 import qualified Hedgehog.Gen                       as Gen
 import qualified Hedgehog.Range                     as Range
 
+import Protocol.Webdriver.ClientAPI       (WDCore (..))
 import qualified Protocol.Webdriver.ClientAPI       as W
 import qualified Protocol.Webdriver.ClientAPI.Types as W
 

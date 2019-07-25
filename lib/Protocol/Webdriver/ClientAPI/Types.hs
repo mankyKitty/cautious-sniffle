@@ -19,11 +19,13 @@ module Protocol.Webdriver.ClientAPI.Types
   , SwitchToWindow (..)
   , WDRect (..)
 
+  , Empty (..)
+
   , SwitchToFrame (..)
-  , FrameId (..) 
+  , FrameId (..)
   , encFrameId
   , decFrameId
-  
+
   , WindowType (..)
   , encWindowType
   , decWindowType
@@ -48,7 +50,7 @@ module Protocol.Webdriver.ClientAPI.Types
 
 import           Control.Error                                       (headErr)
 
-import GHC.Word (Word16)
+import           GHC.Word                                            (Word16)
 
 import           Data.Bool                                           (Bool)
 import           Data.Functor.Alt                                    ((<!>))
@@ -82,6 +84,8 @@ import           Protocol.Webdriver.ClientAPI.Types.Session
 import           Protocol.Webdriver.ClientAPI.Types.Timeout
 import           Protocol.Webdriver.ClientAPI.Types.WDUri
 
+instance JsonEncode WDJson () where mkEncoder = pure (E.mapLikeObj (\_ -> id))
+
 -- Each browsing context has an associated window handle which uniquely identifies it. This must be a String and must not be "current".
 data WindowHandle
 -- The web window identifier is the string constant "window-fcc6-11e5-b4f8-330a88ab9d7f".
@@ -90,6 +94,12 @@ data WindowHandle
   | WebFrameId Text
   | NumericId Scientific
   deriving (Show, Eq)
+
+data Empty = Empty deriving (Show, Eq)
+-- instance JsonEncode WDJson Empty where mkEncoder = pure (singleValueObj "value" (const () >$< E.null))
+instance JsonEncode WDJson Empty where mkEncoder = pure (E.mapLikeObj (\_ -> id))
+
+-- instance JsonDecode WDJson Empty where mkDecoder = pure (singleValueObj "value" E.null)
 
 printWindowHandle :: WindowHandle -> Text
 printWindowHandle (WebWindowId t) = t
@@ -234,8 +244,10 @@ data ExecuteScript = ExecuteScript
   }
   deriving (Show, Eq)
 deriveGeneric ''ExecuteScript
-instance JsonEncode WDJson ExecuteScript
-instance JsonDecode WDJson ExecuteScript
+instance JsonEncode WDJson ExecuteScript where
+  mkEncoder = gEncoder $ trimWaargOpts "_executeScript"
+instance JsonDecode WDJson ExecuteScript where
+  mkDecoder = gDecoder $ trimWaargOpts "_executeScript"
 
 data ExecuteAsyncScript = ExecuteAsyncScript
   { _executeAsyncScriptScript :: Text
@@ -243,8 +255,10 @@ data ExecuteAsyncScript = ExecuteAsyncScript
   }
   deriving (Show, Eq)
 deriveGeneric ''ExecuteAsyncScript
-instance JsonEncode WDJson ExecuteAsyncScript
-instance JsonDecode WDJson ExecuteAsyncScript
+instance JsonEncode WDJson ExecuteAsyncScript where
+  mkEncoder = gEncoder $ trimWaargOpts "_executeAsyncScript"
+instance JsonDecode WDJson ExecuteAsyncScript where
+  mkDecoder = gDecoder $ trimWaargOpts "_executeAsyncScript"
 
 newtype PerformActions = PerformActions
   { _unPerformActions :: Vector Json }
@@ -253,9 +267,12 @@ deriveGeneric ''PerformActions
 instance JsonEncode WDJson PerformActions
 instance JsonDecode WDJson PerformActions
 
-newtype SendAlertText = SendAlertText
+data SendAlertText = SendAlertText
   { _unSendAlertText :: Text }
   deriving (Show, Eq)
 deriveGeneric ''SendAlertText
-instance JsonEncode WDJson SendAlertText
-instance JsonDecode WDJson SendAlertText
+
+instance JsonEncode WDJson SendAlertText where
+  mkEncoder = gEncoder $ trimWaargOpts "_unSendAlert"
+instance JsonDecode WDJson SendAlertText where
+  mkDecoder = gDecoder $ trimWaargOpts "_unSendAlert"

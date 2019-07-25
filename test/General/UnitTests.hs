@@ -1,7 +1,5 @@
-{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeFamilies      #-}
 module General.UnitTests where
 
@@ -14,6 +12,7 @@ import           Text.URI.QQ                        (uri)
 
 import           Servant.Client.Generic             (AsClientT)
 
+import           Protocol.Webdriver.ClientAPI       (WDCore (..))
 import qualified Protocol.Webdriver.ClientAPI       as W
 import qualified Protocol.Webdriver.ClientAPI.Types as W
 
@@ -29,13 +28,33 @@ openSession core = (\i -> Sess i (_mkSession core i)) . W._sessionId . W.getSucc
 closeSession :: Sess -> IO ()
 closeSession = void . W.deleteSession . _sessClient
 
-fetchInputElement
-  :: Env
-  -> W.SessionAPI (AsClientT IO)
-  -> IO (W.ElementAPI (AsClientT IO))
-fetchInputElement env client =
-  _mkElement (_envWDCore env) client . W.getSuccessValue
-    <$> W.findElement client (W.ByCss (input # byId "input-name"))
+fetchInputElement :: Env -> W.SessionAPI (AsClientT IO) -> IO (W.ElementAPI (AsClientT IO))
+fetchInputElement env client = _mkElement (_envWDCore env) client . W.getSuccessValue
+  <$> W.findElement client (W.ByCss (input # byId "input-name"))
+
+testPrompt :: IO Sess -> TestTree
+testPrompt iosess = testGroup "Prompt aka Alert actions"
+  [ testAfterTrigger "trigger and dismissAlert" $ fmap W.getSuccessValue . W.dismissAlert
+  , testAfterTrigger "trigger and acceptAlert" $ fmap W.getSuccessValue . W.acceptAlert
+  , testAfterTrigger "trigger, sendAlertText, and acceptAlert" $ \client -> do
+      _ <- W.sendAlertText client $ W.SendAlertText promptResponse
+      void $ W.acceptAlert client
+  , testAfterTrigger "trigger, getAlertText and dismissALert" $ \client -> do
+      t <- W.getAlertText client
+      _ <- W.dismissAlert client
+      W.getSuccessValue t @?= promptText
+  ]
+  where
+    promptText     = "New prompt, who dis?"
+    promptResponse = "oh no"
+
+    testAfterTrigger n t = testCase n $ do
+      client <- _sessClient <$> iosess
+      _ <- triggerPrompt client
+      t client
+
+    triggerPrompt client = client <$ W.executeScript client
+      (W.ExecuteScript ("window.prompt(\"" <> promptText <> "\")") mempty)
 
 unitTests :: IO Env -> (Env -> IO ()) -> TestTree
 unitTests start stop = withResource start stop $ \ioenv ->
@@ -72,5 +91,7 @@ unitTests start stop = withResource start stop $ \ioenv ->
         _ <- W.elementClear elemClient
         step "element is cleared"
         hasVal ""
+
+    , testPrompt iosess
     ]
   ]

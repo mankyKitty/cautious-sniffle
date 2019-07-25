@@ -60,6 +60,8 @@ library
                      , Protocol.Webdriver.ClientAPI.Types.LogSettings
                      , Protocol.Webdriver.ClientAPI.Types.ProxySettings
 
+                     , Servant.API.Client.HollowBody
+
   build-depends:       base >=4.11 && <4.13
 
   hs-source-dirs:      lib

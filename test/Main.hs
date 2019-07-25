@@ -25,6 +25,8 @@ import           Hedgehog                                    (evalIO,
 import qualified Hedgehog.Gen                                as Gen
 import qualified Hedgehog.Range                              as Range
 
+import           Protocol.Webdriver.ClientAPI                (WDCore (..))
+
 import qualified Protocol.Webdriver.ClientAPI                as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Internal as W
 import qualified Protocol.Webdriver.ClientAPI.Types.Session  as W
