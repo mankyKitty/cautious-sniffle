@@ -15,6 +15,8 @@ module Protocol.Webdriver.ClientAPI.SessionAPI
 import qualified GHC.Generics                        as GHC
 
 import           Data.Proxy                          (Proxy (..))
+
+import           Data.ByteString                     (ByteString)
 import           Data.Text                           (Text)
 import           Data.Vector                         (Vector)
 
@@ -30,16 +32,16 @@ import           Protocol.Webdriver.ClientAPI.Types
 import           Servant.API.Client.HollowBody              (HollowBody)
 
 data ElementAPI route = ElementAPI
-  { getElementAttribute     :: route :- "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success Text)
+  { getElementAttribute     :: route :- "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success ByteString)
   , elementClear            :: route :- "clear" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
   , elementClick            :: route :- "click" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
-  , getElementCSSValue      :: route :- "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] (Success Text)
+  , getElementCSSValue      :: route :- "css" :> Capture "propertyName" Text :> Get '[WaargJSON WDJson] (Success PropertyVal)
   , isElementDisplayed      :: route :- "displayed" :> Get '[WaargJSON WDJson] (Success Bool)
   , findElementFromElement  :: route :- "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Success ElementId)
   , findElementsFromElement :: route :- "elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Success (Vector ElementId))
   , isElementEnabled        :: route :- "enabled" :> Get '[WaargJSON WDJson] (Success Bool)
   , getElementTagName       :: route :- "name" :> Get '[WaargJSON WDJson] (Success Text)
-  , getElementProperty      :: route :- "property" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success Text)
+  , getElementProperty      :: route :- "property" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success PropertyVal)
   , getElementRect          :: route :- "rect" :> Get '[WaargJSON WDJson] (Success WDRect)
   , takeElementScreenshot   :: route :- "screenshot" :> ReqBody '[WaargJSON WDJson] TakeElementScreenshot :> Get '[WaargJSON WDJson] (Success Base64)
   , isElementSelected       :: route :- "selected" :> Get '[WaargJSON WDJson] (Success Bool)
@@ -53,7 +55,7 @@ elemApi = genericApi (Proxy @ElementAPI)
 
 data WindowAPI route = WindowAPI
   { fullscreenWindow        :: route :- "fullscreen" :> Post '[WaargJSON WDJson] (Success WDRect)
-  , getWindowHandles        :: route :- "handles" :> Get '[WaargJSON WDJson] (Vector Text)
+  , getWindowHandles        :: route :- "handles" :> Get '[WaargJSON WDJson] (Vector WindowHandle)
   , maximizeWindow          :: route :- "maximize" :> Post '[WaargJSON WDJson] (Success WDRect)
   , minimizeWindow          :: route :- "minimize" :> Post '[WaargJSON WDJson] (Success WDRect)
   , createWindow            :: route :- "new" :> ReqBody '[WaargJSON WDJson] CreateWindow :> Post '[WaargJSON WDJson] (Success NewWindow)
@@ -90,7 +92,7 @@ data SessionAPI route = SessionAPI
   , forward                 :: route :- "forward" :> Post '[WaargJSON WDJson] (Success ())
   , switchToParentFrame     :: route :- "frame" :> "parent" :> Post '[WaargJSON WDJson] (Success ())
   , switchToFrame           :: route :- "frame" :> ReqBody '[WaargJSON WDJson] SwitchToFrame :> Post '[WaargJSON WDJson] (Success ())
-  , refresh                 :: route :- "refresh" :> Post '[WaargJSON WDJson] (Success ())
+  , refresh                 :: route :- "refresh" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
   , takeScreenshot          :: route :- "screenshot" :> Get '[WaargJSON WDJson] (Success Base64)
   , getPageSource           :: route :- "source" :> Get '[WaargJSON WDJson] (Success Text)
   , getTimeouts             :: route :- "timeouts" :> Get '[WaargJSON WDJson] (Success Timeout)

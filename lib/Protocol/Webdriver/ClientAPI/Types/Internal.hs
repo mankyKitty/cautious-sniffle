@@ -6,17 +6,23 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 module Protocol.Webdriver.ClientAPI.Types.Internal where
 
 import           Control.Error.Util         (note)
 import           Control.Lens               (over, (%~), (?~), _head)
+
 import           Control.Monad.Error.Lens   (throwing)
 
 import           Data.Bifunctor             (bimap)
 
 import           Data.ByteString            (ByteString)
+import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Base64     as B64
 import qualified Data.ByteString.Char8      as B8
+import qualified Data.ByteString.Lazy       as BSL
 
 import qualified Data.Char                  as C
 
@@ -35,6 +41,10 @@ import           Data.Vector                (Vector)
 import qualified Data.Vector                as V
 import           Text.Read                  (readMaybe)
 
+import qualified Waargonaut.Types.Json as J
+import qualified Waargonaut.Types.JString as J
+import qualified Waargonaut.Types.JChar as J 
+
 import qualified Waargonaut.Decode          as D
 import qualified Waargonaut.Decode.Error    as DE
 import qualified Waargonaut.Encode          as E
@@ -43,6 +53,25 @@ import           Waargonaut.Generic         (JsonDecode (..), JsonEncode (..),
                                              defaultOpts, trimPrefixLowerFirst,
                                              untag)
 data WDJson
+
+instance JsonDecode WDJson BSL.ByteString where
+  mkDecoder = pure D.lazyByteString
+
+instance JsonDecode WDJson BS.ByteString where
+  mkDecoder = pure D.strictByteString
+
+encodeStrictByteString :: Applicative f => E.Encoder f BS.ByteString
+encodeStrictByteString = E.encodeA $ \a -> pure . 
+  -- package up our JString appropriately
+  J.Json . flip J.JStr mempty . J.JString' $ 
+  -- Make our vector of JChar, replacing unacceptable char values
+  BS.foldr' (V.cons . (J.utf8CharToJChar . C.chr . fromIntegral)) V.empty a 
+
+instance JsonEncode WDJson BS.ByteString where
+  mkEncoder = pure encodeStrictByteString
+
+instance JsonEncode WDJson () where
+  mkEncoder = pure (E.mapLikeObj (const id))
 
 withA :: Monad f => D.Decoder f a -> (a -> Either Text b) -> D.Decoder f b
 withA from to = from >>= either (throwing DE._ConversionFailure) pure . to

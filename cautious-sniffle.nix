@@ -2,9 +2,10 @@
 , clay, containers, contravariant, dependent-map, dependent-sum
 , dependent-sum-template, errors, exceptions, generics-sop
 , hedgehog, http-client, lens, modern-uri, mtl, natural, process
-, scientific, scotty, semigroupoids, servant, servant-client
-, servant-client-core, servant-waargonaut, stdenv, tasty
-, tasty-hedgehog, tasty-hunit, text, time, vector, waargonaut, warp
+, resourcet, scientific, scotty, semigroupoids, servant
+, servant-client, servant-client-core, servant-waargonaut, stdenv
+, tasty, tasty-hedgehog, tasty-hunit, text, text-icu, time, vector
+, waargonaut, warp
 }:
 mkDerivation {
   pname = "cautious-sniffle";
@@ -14,16 +15,18 @@ mkDerivation {
     base base64-bytestring bifunctors bytestring clay containers
     contravariant dependent-map dependent-sum dependent-sum-template
     errors generics-sop http-client lens modern-uri mtl natural
-    scientific semigroupoids servant servant-client servant-client-core
-    servant-waargonaut text time vector waargonaut
+    resourcet scientific semigroupoids servant servant-client
+    servant-client-core servant-waargonaut text text-icu time vector
+    waargonaut
   ];
   testHaskellDepends = [
     base base64-bytestring bifunctors bytestring clay containers
     contravariant dependent-map dependent-sum dependent-sum-template
     errors exceptions generics-sop hedgehog http-client lens modern-uri
-    mtl natural process scientific scotty semigroupoids servant
-    servant-client servant-client-core servant-waargonaut tasty
-    tasty-hedgehog tasty-hunit text time vector waargonaut warp
+    mtl natural process resourcet scientific scotty semigroupoids
+    servant servant-client servant-client-core servant-waargonaut tasty
+    tasty-hedgehog tasty-hunit text text-icu time vector waargonaut
+    warp
   ];
   license = "unknown";
   hydraPlatforms = stdenv.lib.platforms.none;

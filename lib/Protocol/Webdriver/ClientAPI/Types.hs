@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -18,21 +20,13 @@ module Protocol.Webdriver.ClientAPI.Types
   , SendAlertText (..)
   , SwitchToWindow (..)
   , WDRect (..)
-
-  , Empty (..)
-
   , SwitchToFrame (..)
-  , FrameId (..)
-  , encFrameId
-  , decFrameId
 
-  , WindowType (..)
-  , encWindowType
-  , decWindowType
+  , PropertyVal (..), encodePropertyVal, decodePropertyVal
+  , FrameId (..), encFrameId, decFrameId
+  , WindowType (..), encWindowType, decWindowType
+  , WindowHandle (..), encWindowHandle, decWindowHandle
 
-  , WindowHandle (..)
-  , encWindowHandle
-  , decWindowHandle
   , printWindowHandle
   , checkWindowHandlePattern
 
@@ -46,6 +40,7 @@ module Protocol.Webdriver.ClientAPI.Types
   , module Protocol.Webdriver.ClientAPI.Types.Timeout
   , module Protocol.Webdriver.ClientAPI.Types.Cookies
   , module Protocol.Webdriver.ClientAPI.Types.WDUri
+  , module Protocol.Webdriver.ClientAPI.Types.Keys
   ) where
 
 import           Control.Error                                       (headErr)
@@ -57,9 +52,13 @@ import           Data.Functor.Alt                                    ((<!>))
 import           Data.Functor.Contravariant                          ((>$<))
 import           Data.Scientific                                     (Scientific)
 import qualified Data.Scientific                                     as Sci
+
+import           Data.ByteString                                           (ByteString)
+
 import           Data.Text                                           (Text)
 import qualified Data.Text                                           as T
 import           Data.Vector                                         (Vector)
+import qualified Data.Vector                                         as V
 
 import qualified Text.ParserCombinators.ReadP                        as R
 
@@ -71,20 +70,23 @@ import           Waargonaut.Generic                                  (JsonDecode
                                                                       gEncoder)
 import           Waargonaut.Types.Json                               (Json)
 
+import qualified Waargonaut.Types.JChar                              as J
+import qualified Waargonaut.Types.Json                               as J
+import qualified Waargonaut.Types.JString                            as J
+
 import           Generics.SOP.TH                                     (deriveGeneric)
 
 import           Protocol.Webdriver.ClientAPI.Types.Cookies
 import           Protocol.Webdriver.ClientAPI.Types.ElementId
 import           Protocol.Webdriver.ClientAPI.Types.Error
 import           Protocol.Webdriver.ClientAPI.Types.Internal
+import           Protocol.Webdriver.ClientAPI.Types.Keys
 import           Protocol.Webdriver.ClientAPI.Types.LocationStrategy
 import           Protocol.Webdriver.ClientAPI.Types.LogSettings
 import           Protocol.Webdriver.ClientAPI.Types.ProxySettings
 import           Protocol.Webdriver.ClientAPI.Types.Session
 import           Protocol.Webdriver.ClientAPI.Types.Timeout
 import           Protocol.Webdriver.ClientAPI.Types.WDUri
-
-instance JsonEncode WDJson () where mkEncoder = pure (E.mapLikeObj (\_ -> id))
 
 -- Each browsing context has an associated window handle which uniquely identifies it. This must be a String and must not be "current".
 data WindowHandle
@@ -94,12 +96,6 @@ data WindowHandle
   | WebFrameId Text
   | NumericId Scientific
   deriving (Show, Eq)
-
-data Empty = Empty deriving (Show, Eq)
--- instance JsonEncode WDJson Empty where mkEncoder = pure (singleValueObj "value" (const () >$< E.null))
-instance JsonEncode WDJson Empty where mkEncoder = pure (E.mapLikeObj (\_ -> id))
-
--- instance JsonDecode WDJson Empty where mkDecoder = pure (singleValueObj "value" E.null)
 
 printWindowHandle :: WindowHandle -> Text
 printWindowHandle (WebWindowId t) = t
@@ -143,6 +139,31 @@ instance JsonEncode WDJson SwitchToWindow where
 
 instance JsonDecode WDJson SwitchToWindow where
   mkDecoder = gDecoder $ trimWaargOpts "_switchToWindow"
+
+data PropertyVal
+  = Numeric Scientific
+  | Boolean Bool
+  | Textual ByteString
+  | OtherVal Json
+  deriving (Show, Eq)
+deriveGeneric ''PropertyVal
+
+decodePropertyVal :: Monad f => D.Decoder f PropertyVal
+decodePropertyVal = 
+  Numeric <$> D.scientific <!> 
+  Boolean <$> D.bool <!>
+  Textual <$> D.strictByteString <!> 
+  OtherVal <$> D.json
+
+encodePropertyVal :: Applicative f => E.Encoder f PropertyVal
+encodePropertyVal = E.encodeA $ \case 
+  Numeric s -> E.runEncoder E.scientific s
+  Boolean b -> E.runEncoder E.bool b
+  Textual x -> E.runEncoder encodeStrictByteString x
+  OtherVal j -> E.runEncoder E.json j
+
+instance JsonEncode WDJson PropertyVal where mkEncoder = pure encodePropertyVal 
+instance JsonDecode WDJson PropertyVal where mkDecoder = pure decodePropertyVal 
 
 data WindowType
   = Window
@@ -188,8 +209,10 @@ data WDRect = WDRect
   deriving (Show, Eq)
 deriveGeneric ''WDRect
 
-instance JsonEncode WDJson WDRect
-instance JsonDecode WDJson WDRect
+instance JsonEncode WDJson WDRect where
+  mkEncoder = gEncoder $ trimWaargOpts "_windowRect"
+instance JsonDecode WDJson WDRect where
+  mkDecoder = gDecoder $ trimWaargOpts "_windowRect"
 
 data FrameId
   = NullFrame
@@ -220,14 +243,33 @@ instance JsonEncode WDJson SwitchToFrame where
 instance JsonDecode WDJson SwitchToFrame where
   mkDecoder = gDecoder $ trimWaargOpts "_switchToFrame"
 
+data Input
+  = KeyPress Word16
+  | Input Text
+  deriving (Eq, Show)
+
+newtype KeySeq = KeySeq { unKeySeq :: [Input] } 
+  deriving (Eq, Show)
+  deriving (Semigroup, Monoid) via [Input]
+
 newtype ElementSendKeys = ElementSendKeys
   { _elementSendKeysValue :: Text }
   deriving (Show, Eq)
 deriveGeneric ''ElementSendKeys
 
+encodeUtf8Char :: Applicative f => E.Encoder f Char
+encodeUtf8Char = E.encodeA (
+  pure .
+  J.Json .
+  flip J.JStr mempty .
+  J.JString' .
+  V.singleton .
+  J.utf8CharToJChar
+  )
+
 instance JsonEncode WDJson ElementSendKeys where
   mkEncoder = pure $ E.mapLikeObj $ \esk ->
-    E.atKey' "value" (E.list E.text) [_elementSendKeysValue esk] .
+    E.atKey' "value" (E.list encodeUtf8Char) (T.unpack $ _elementSendKeysValue esk) .
     -- This is the new Webdriver way but chromedriver still requires a list.
     E.atKey' "text" E.text (_elementSendKeysValue esk)
 

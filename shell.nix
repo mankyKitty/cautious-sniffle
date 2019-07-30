@@ -28,6 +28,7 @@ let
         } {};
 
         clay = super.haskell.lib.dontCheck hsuper.clay;
+        text-utf8 = super.haskell.lib.dontCheck hsuper.text-utf8;
 
         dependent-sum-template = hsuper.callCabal2nix "dependent-sum-template" sources.dependent-sum-template {};
         dependent-sum       = hsuper.callCabal2nix "dependent-sum" sources.dependent-sum {};

@@ -2,10 +2,12 @@
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE KindSignatures         #-}
+{-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE TemplateHaskell        #-}
 module General.Types
   ( Model (..)
+  , initialModel
   , Env (..)
   , HasModel (..)
   , WDRun (..)
@@ -13,38 +15,55 @@ module General.Types
   , HasSess (..)
   , Threads (..)
   , chromeSession
+  , firefoxSession
   ) where
 
-import           Control.Concurrent                              (ThreadId)
-import           Control.Monad.IO.Class                          (MonadIO)
-import           System.Process                                  (ProcessHandle)
+import           Control.Concurrent                                      (ThreadId)
+import           Control.Monad.IO.Class                                  (MonadIO)
+import           System.Process                                          (ProcessHandle)
 
-import           Control.Lens.TH                                 (makeClassy)
-import           Data.Kind                                       (Type)
+import           Control.Lens.TH                                         (makeClassy)
+import           Data.Function                                           ((&))
+import           Data.Kind                                               (Type)
+import           Data.Text                                               (Text)
 
-import           Data.Text                                       (Text)
+import           Servant.Client                                          (ClientEnv,
+                                                                          ClientM,
+                                                                          ServantError)
+import           Servant.Client.Generic                                  (AsClientT)
 
-import           Servant.Client                                  (ClientEnv,
-                                                                  ClientM,
-                                                                  ServantError)
-import           Servant.Client.Generic                          (AsClientT)
+import           Hedgehog                                                (MonadTest,
+                                                                          Opaque,
+                                                                          Var)
 
-import           Hedgehog                                        (MonadTest,
-                                                                  Opaque, Var)
+import           Protocol.Webdriver.ClientAPI                            (ElementAPI,
+                                                                          SessionAPI,
+                                                                          WDCore)
+import           Protocol.Webdriver.ClientAPI.Types.Session              (NewSession (..),
+                                                                          SessionId)
 
-import           Protocol.Webdriver.ClientAPI                    (ElementAPI,
-                                                                  SessionAPI,
-                                                                  WDCore)
-import           Protocol.Webdriver.ClientAPI.Types.Session      (NewSession (..),
-                                                                  SessionId)
-
-import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities as W
+import           Protocol.Webdriver.ClientAPI.Types                      ((~=>))
+import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as W
+import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
 
 data Sess = Sess
   { _sessId     :: SessionId
   , _sessClient :: SessionAPI (AsClientT IO)
   }
 makeClassy ''Sess
+
+firefoxSession :: NewSession
+firefoxSession = NewSession firefox Nothing Nothing
+  where
+    firefox = W.firefox
+      & W.PlatformName ~=> W.Linux
+      & W.FirefoxSettings ~=> ffSettings
+
+    ffSettings = mempty
+        -- I needed to add this as Mozilla removed this setting, but my
+        -- geckdriver keeps trying to set it to an invalid value and Marionette crashes. :<
+      & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
+      & FF.FFArgs ~=> ["--headless"]
 
 chromeSession :: NewSession
 chromeSession = NewSession
@@ -53,11 +72,15 @@ chromeSession = NewSession
   Nothing                       -- password
 
 data Model (v :: Type -> Type) = Model
-  { _modelAtUrl      :: Bool
-  , _modelElementApi :: Maybe (Var (Opaque (ElementAPI (AsClientT IO))) v)
-  , _modelKeysSent   :: Maybe Text
+  { _modelAtUrl       :: Bool
+  , _modelElementApi  :: Maybe (Var (Opaque (ElementAPI (AsClientT IO))) v)
+  , _modelKeysSent    :: Maybe Text
+  , _modelKeysChecked :: Bool
   }
 makeClassy ''Model
+
+initialModel :: Model v
+initialModel = Model False Nothing Nothing False
 
 data WDRun m = WDRun
   { runOrFail :: forall a. (MonadTest m, MonadIO m) => ClientM a -> m a

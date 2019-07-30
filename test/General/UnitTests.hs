@@ -8,6 +8,9 @@ import           Control.Monad                      (void)
 import           Test.Tasty
 import           Test.Tasty.HUnit
 
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+
 import           Text.URI.QQ                        (uri)
 
 import           Servant.Client.Generic             (AsClientT)
@@ -33,13 +36,13 @@ fetchInputElement env client = _mkElement (_envWDCore env) client . W.getSuccess
   <$> W.findElement client (W.ByCss (input # byId "input-name"))
 
 testPrompt :: IO Sess -> TestTree
-testPrompt iosess = testGroup "Prompt aka Alert actions"
-  [ testAfterTrigger "trigger and dismissAlert" $ fmap W.getSuccessValue . W.dismissAlert
-  , testAfterTrigger "trigger and acceptAlert" $ fmap W.getSuccessValue . W.acceptAlert
-  , testAfterTrigger "trigger, sendAlertText, and acceptAlert" $ \client -> do
+testPrompt iosess = testGroup "Prompt actions"
+  [ testAfterTrigger "trigger and dismiss" $ fmap W.getSuccessValue . W.dismissAlert
+  , testAfterTrigger "trigger and accept" $ fmap W.getSuccessValue . W.acceptAlert
+  , testAfterTrigger "trigger, send text, and accept" $ \client -> do
       _ <- W.sendAlertText client $ W.SendAlertText promptResponse
       void $ W.acceptAlert client
-  , testAfterTrigger "trigger, getAlertText and dismissALert" $ \client -> do
+  , testAfterTrigger "trigger, get text and dismiss" $ \client -> do
       t <- W.getAlertText client
       _ <- W.dismissAlert client
       W.getSuccessValue t @?= promptText
@@ -67,31 +70,51 @@ unitTests start stop = withResource start stop $ \ioenv ->
 
   , after AllSucceed "navigateTo" $ testGroup "after navigation"
     [ testCase "findElement" $ do
-        elemClient <- ioenv >>= \env -> iosess >>= fetchInputElement env . _sessClient
+        elemClient <- fetchElemClient ioenv iosess
         idAttr <- W.getSuccessValue <$> W.getElementProperty elemClient "id"
-        idAttr @?= "input-name"
+        idAttr @?= W.Textual "input-name"
+
+    , testCaseSteps "getProperty Types" $ \step -> do
+        elemClient <- fetchElemClient ioenv iosess
+        let getProp = fmap W.getSuccessValue . W.getElementProperty elemClient
+        step "textual" >> getProp "id" >>= (@?= W.Textual "input-name")
+        step "numeric" >> getProp "tabIndex" >>= (@?= W.Numeric 0)
+        step "boolean" >> getProp "required" >>= (@?= W.Boolean True)
+        step "other (serialised as JSON)" >> getProp "children" >>= \o -> case o of
+          W.OtherVal _ -> pure ()
+          _            -> assertFailure "Not a JSON value!"
 
     , testCaseSteps "Clear element" $ \step -> do
         step "findElement"
-        elemClient <- ioenv >>= \env -> iosess >>= fetchInputElement env . _sessClient
+        elemClient <- fetchElemClient ioenv iosess
 
-        let
-          hasVal v = (W.getSuccessValue <$> W.getElementProperty elemClient "value") >>= (@?= v)
-          keys = "taco taco"
+        let keys = "taco taco"
 
         step "element is empty"
-        hasVal ""
+        hasTextVal elemClient ""
 
         step "sendKeys"
         _ <- W.elementSendKeys elemClient (W.ElementSendKeys keys)
         step "element has sent keys"
-        hasVal keys
+        hasTextVal elemClient keys
 
         step "clearElement"
         _ <- W.elementClear elemClient
         step "element is cleared"
-        hasVal ""
+        hasTextVal elemClient ""
 
     , testPrompt iosess
+
+    , testCase "sendKeys with a backspace" $ do
+        elemClient <- fetchElemClient ioenv iosess
+        _ <- W.elementSendKeys elemClient (W.ElementSendKeys $ "abc" <> T.cons W.backspace "def")
+        hasTextVal elemClient "abdef"
     ]
   ]
+  where
+    fetchElemClient ioenv iosess = ioenv >>= \env -> 
+      iosess >>= fetchInputElement env . _sessClient
+
+    hasTextVal cli v = 
+      (W.getSuccessValue <$> W.getElementProperty cli "value") >>= 
+        (@?= W.Textual (TE.encodeUtf8 v))

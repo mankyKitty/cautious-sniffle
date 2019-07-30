@@ -7,7 +7,12 @@
   <!-- Simple form which will send a GET request -->
   <form action="" method="post">
     <label for="input-name">Name:</label>
-    <input id="input-name" type="text" name="name">
+    <input id="input-name" 
+           type="text" 
+           name="name" 
+           required="true" 
+           maxlength="400" 
+           data-squirrel="{'a':33}">
     <label for="input-occupation">Occupation:</label>
     <input id="input-occupation" type="text" name="occupation">
     <input type="submit" value="Save">

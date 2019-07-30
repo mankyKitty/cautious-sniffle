@@ -5,7 +5,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main (main) where
 
-import           Control.Monad                               (void)
 import           Data.Proxy                                  (Proxy (..))
 
 import           Test.Tasty                                  (TestTree,
@@ -37,35 +36,38 @@ import           General.TestOpts                            (OverrideWDUrl)
 import           General.Types
 import           General.UnitTests
 
+managedSession  :: (IO (Env, Sess) -> TestTree) -> IO Env -> TestTree
+managedSession f ioenv = withResource initSession closeSession f
+  where
+    closeSession (_, Sess _ sCli) =
+      W.getSuccessValue <$> W.deleteSession sCli
+
+    initSession = do
+      env <- ioenv
+      sess <- W.getSuccessValue <$> W.newSession (_core . _envWDCore $ env) firefoxSession
+      pure (env, Sess (W._sessionId sess) (_mkSession (_envWDCore env) (W._sessionId sess)))
+
 stateMachineTests :: IO Env -> (Env -> IO ()) -> TestTree
-stateMachineTests start stop = withResource start stop $ \ioenv ->
-  testProperty "Enter some text" . withTests 1 . property $ do
-    env <- evalIO ioenv
-    sessD <- evalIO $ W.getSuccessValue <$> W.newSession (_core . _envWDCore $ env) chromeSession
+stateMachineTests start stop = withResource start stop (managedSession smt)
+  where
+    smt ctx = testProperty "Enter some text" . withTests 20 . property $ do
+      (env, sessApi) <- evalIO ctx
+      let
+        commands = fmap (\c -> c env sessApi)
+          [ cFindElement
+          , cNavigateTo
+          , cSendKeys
+          , cCheckSentKeys
+          , cClearKeys
+          ]
 
-    let
-      sCli = _mkSession (_envWDCore env) (W._sessionId sessD)
-      sessApi = Sess (W._sessionId sessD) sCli
-
-      initialModel = Model
-        False
-        Nothing
-        Nothing
-
-      commands = fmap (\c -> c env sessApi)
-        [ cFindElement
-        , cNavigateTo
-        , cSendKeys
-        , cCheckSentKeys
-        ]
-
-    actions <- forAll $ Gen.sequential (Range.linear 3 10) initialModel commands
-    executeSequential initialModel actions
-    evalIO . void $ W.deleteSession sCli
+      actions <- forAll $ Gen.sequential (Range.linear 5 100) initialModel commands
+      evalIO $ W.refresh (_sessClient sessApi)
+      executeSequential initialModel actions
 
 main :: IO ()
 main = defaultMainWithIngredients myOptions . manageDriverAndServer $ \up down -> testGroup "Webdriver Tests"
-  [ stateMachineTests up down
+  [ testGroup "State Machine" [stateMachineTests up down]
   , unitTests up down
   ]
   where
