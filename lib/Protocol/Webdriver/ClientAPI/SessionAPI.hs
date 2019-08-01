@@ -83,7 +83,7 @@ data SessionAPI route = SessionAPI
   , deleteAllCookies        :: route :- "cookie" :> Delete '[WaargJSON WDJson] (Success ())
   , getAllCookies           :: route :- "cookie" :> Get '[WaargJSON WDJson] (Success (Vector Cookie))
   , addCookie               :: route :- "cookie" :> ReqBody '[WaargJSON WDJson] Cookie :> Post '[WaargJSON WDJson] (Success ())
-  , getActiveElement        :: route :- "element" :> "active" :> Post '[WaargJSON WDJson] (Success ElementId)
+  , getActiveElement        :: route :- "element" :> "active" :> Get '[WaargJSON WDJson] (Success ElementId)
   , withElement             :: route :- "element" :> Capture "elementId" ElementId :> ToServantApi ElementAPI
   , findElement             :: route :- "element" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Success ElementId)
   , findElements            :: route :- "elements" :> ReqBody '[WaargJSON WDJson] LocateUsing :> Post '[WaargJSON WDJson] (Success (Vector ElementId))

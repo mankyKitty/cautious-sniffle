@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -5,10 +6,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Protocol.Webdriver.ClientAPI.Types.Internal where
 
 import           Control.Error.Util         (note)
@@ -18,11 +18,14 @@ import           Control.Monad.Error.Lens   (throwing)
 
 import           Data.Bifunctor             (bimap)
 
+import Data.Bool (bool)
+
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Base64     as B64
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy       as BSL
+import qualified Data.ByteString.Lazy.Char8 as B8L
 
 import qualified Data.Char                  as C
 
@@ -41,10 +44,6 @@ import           Data.Vector                (Vector)
 import qualified Data.Vector                as V
 import           Text.Read                  (readMaybe)
 
-import qualified Waargonaut.Types.Json as J
-import qualified Waargonaut.Types.JString as J
-import qualified Waargonaut.Types.JChar as J 
-
 import qualified Waargonaut.Decode          as D
 import qualified Waargonaut.Decode.Error    as DE
 import qualified Waargonaut.Encode          as E
@@ -60,16 +59,26 @@ instance JsonDecode WDJson BSL.ByteString where
 instance JsonDecode WDJson BS.ByteString where
   mkDecoder = pure D.strictByteString
 
+-- If my understanding is correct, going from Word8 -> Char should be lossless
+-- as there is no truncation because Char > Word8. This is different to using
+-- the encoding functions to produce a text value as there are valid ByteStrings
+-- that are not valid UTF-8 because ByteStrings are just arrays of bytes and are
+-- not required to be valid UTF-8
 encodeStrictByteString :: Applicative f => E.Encoder f BS.ByteString
-encodeStrictByteString = E.encodeA $ \a -> pure . 
-  -- package up our JString appropriately
-  J.Json . flip J.JStr mempty . J.JString' $ 
-  -- Make our vector of JChar, replacing unacceptable char values
-  BS.foldr' (V.cons . (J.utf8CharToJChar . C.chr . fromIntegral)) V.empty a 
+encodeStrictByteString = B8.unpack >$< E.string
+
+encodeLazyByteString :: Applicative f => E.Encoder f BSL.ByteString
+encodeLazyByteString = B8L.unpack >$< E.string
 
 instance JsonEncode WDJson BS.ByteString where
   mkEncoder = pure encodeStrictByteString
 
+instance JsonEncode WDJson BSL.ByteString where
+  mkEncoder = pure encodeLazyByteString
+
+-- Used in the HollowBody so () is encoded as {}, as Webdriver endpoints can not
+-- require any input in the body of a request but the driver will fail if there
+-- isn't at least a JSON object.
 instance JsonEncode WDJson () where
   mkEncoder = pure (E.mapLikeObj (const id))
 
@@ -81,6 +90,8 @@ withString = withA D.string
 
 withText :: Monad f => (Text -> Either Text a) -> D.Decoder f a
 withText = withA D.text
+
+textMatch t x a = withText (bool (Left t) (Right a) . (== x))
 
 decodeFromReadUCFirst :: (Read a, Monad f) => Text -> D.Decoder f a
 decodeFromReadUCFirst l = withString (note l . readMaybe . over _head C.toUpper)

@@ -16,7 +16,6 @@ module Protocol.Webdriver.ClientAPI.Types
   , ExecuteAsyncScript (..)
   , ExecuteScript (..)
   , NewWindow (..)
-  , PerformActions (..)
   , SendAlertText (..)
   , SwitchToWindow (..)
   , WDRect (..)
@@ -41,6 +40,7 @@ module Protocol.Webdriver.ClientAPI.Types
   , module Protocol.Webdriver.ClientAPI.Types.Cookies
   , module Protocol.Webdriver.ClientAPI.Types.WDUri
   , module Protocol.Webdriver.ClientAPI.Types.Keys
+  , module Protocol.Webdriver.ClientAPI.Types.Actions
   ) where
 
 import           Control.Error                                       (headErr)
@@ -53,10 +53,9 @@ import           Data.Functor.Contravariant                          ((>$<))
 import           Data.Scientific                                     (Scientific)
 import qualified Data.Scientific                                     as Sci
 
-import           Data.ByteString                                           (ByteString)
-
 import           Data.Text                                           (Text)
 import qualified Data.Text                                           as T
+import qualified Data.Text.Encoding                                as TE
 import           Data.Vector                                         (Vector)
 import qualified Data.Vector                                         as V
 
@@ -87,6 +86,7 @@ import           Protocol.Webdriver.ClientAPI.Types.ProxySettings
 import           Protocol.Webdriver.ClientAPI.Types.Session
 import           Protocol.Webdriver.ClientAPI.Types.Timeout
 import           Protocol.Webdriver.ClientAPI.Types.WDUri
+import  Protocol.Webdriver.ClientAPI.Types.Actions
 
 -- Each browsing context has an associated window handle which uniquely identifies it. This must be a String and must not be "current".
 data WindowHandle
@@ -143,24 +143,28 @@ instance JsonDecode WDJson SwitchToWindow where
 data PropertyVal
   = Numeric Scientific
   | Boolean Bool
-  | Textual ByteString
-  | OtherVal Json
+  | Textual Text
+  -- | OtherVal Json
   deriving (Show, Eq)
 deriveGeneric ''PropertyVal
 
 decodePropertyVal :: Monad f => D.Decoder f PropertyVal
 decodePropertyVal = 
-  Numeric <$> D.scientific <!> 
-  Boolean <$> D.bool <!>
-  Textual <$> D.strictByteString <!> 
-  OtherVal <$> D.json
+  (Numeric <$> D.scientific) <!> 
+  (Boolean <$> D.bool) <!>
+  (Textual . TE.decodeUtf8 <$> D.strictByteString)
+
+  -- (OtherVal <$> D.json) -- the API does odd things when requesting
+  -- non-simple properties. Some objects cause 500s within the driver,
+  -- others will provide a serialisable object but the driver returns
+  -- an empty string.
 
 encodePropertyVal :: Applicative f => E.Encoder f PropertyVal
 encodePropertyVal = E.encodeA $ \case 
   Numeric s -> E.runEncoder E.scientific s
   Boolean b -> E.runEncoder E.bool b
-  Textual x -> E.runEncoder encodeStrictByteString x
-  OtherVal j -> E.runEncoder E.json j
+  Textual x -> E.runEncoder E.text x
+  -- OtherVal j -> E.runEncoder E.json j
 
 instance JsonEncode WDJson PropertyVal where mkEncoder = pure encodePropertyVal 
 instance JsonDecode WDJson PropertyVal where mkDecoder = pure decodePropertyVal 
@@ -228,7 +232,10 @@ encFrameId = E.encodeA $ \case
   FrameElement e -> E.runEncoder encElementId e
 
 decFrameId :: Monad f => D.Decoder f FrameId
-decFrameId = (NullFrame <$ D.null) <!> (Number <$> D.integral) <!> (FrameElement <$> decElementId)
+decFrameId = 
+  (NullFrame <$ D.null) <!> 
+  (Number <$> D.integral) <!> 
+  (FrameElement <$> decElementId)
 
 instance JsonEncode WDJson FrameId where mkEncoder = pure encFrameId
 instance JsonDecode WDJson FrameId where mkDecoder = pure decFrameId
@@ -274,11 +281,14 @@ instance JsonEncode WDJson ElementSendKeys where
     E.atKey' "text" E.text (_elementSendKeysValue esk)
 
 newtype TakeElementScreenshot = TakeElementScreenshot
-  { _unTakeElementScreenshot :: Maybe Bool }
+  { _takeElementScreenshotScroll :: Maybe Bool }
   deriving (Show, Eq)
 deriveGeneric ''TakeElementScreenshot
-instance JsonEncode WDJson TakeElementScreenshot
-instance JsonDecode WDJson TakeElementScreenshot
+
+instance JsonEncode WDJson TakeElementScreenshot where
+  mkEncoder = gEncoder $ trimWaargOpts "_takeElementScreenshot"
+instance JsonDecode WDJson TakeElementScreenshot where
+  mkDecoder = gDecoder $ trimWaargOpts "_takeElementScreenshot"
 
 data ExecuteScript = ExecuteScript
   { _executeScriptScript :: Text
@@ -301,13 +311,6 @@ instance JsonEncode WDJson ExecuteAsyncScript where
   mkEncoder = gEncoder $ trimWaargOpts "_executeAsyncScript"
 instance JsonDecode WDJson ExecuteAsyncScript where
   mkDecoder = gDecoder $ trimWaargOpts "_executeAsyncScript"
-
-newtype PerformActions = PerformActions
-  { _unPerformActions :: Vector Json }
-  deriving (Show, Eq)
-deriveGeneric ''PerformActions
-instance JsonEncode WDJson PerformActions
-instance JsonDecode WDJson PerformActions
 
 data SendAlertText = SendAlertText
   { _unSendAlertText :: Text }

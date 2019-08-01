@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Haskell WebDriver Test Tab Accessibility Page</title>
+</head>
+<body>
+  <!-- Simple form which will send a GET request -->
+  <form action="" method="post">
+    <label for="input-name">Name:</label>
+    <input id="input-name" type="text" tabindex="1">
+
+    <label for="input-occupation">Occupation:</label>
+    <input id="input-occupation" type="text" name="occupation" tabindex="2">
+
+    <input type="submit" value="Save">
+  </form>
+
+  <!-- Form with fieldset, legend, and label -->
+  <form action="" method="post">
+    <fieldset>
+      <legend>Title</legend>
+      <input type="radio" name="radio" id="radio" tabindex="3">
+      <label for="radio">Click me</label>
+    </fieldset>
+  </form>
+
+  <fieldset>
+    <div id="focus-lost"></div>
+    <div id="focus-gained"></div>
+  </fieldset>
+
+  <fieldset>
+    <div id="active-elem"></div>
+  </fieldset>
+
+  <script>
+    var lost = document.getElementById('focus-lost');
+    var gained = document.getElementById('focus-gained');
+
+    const setActive = (n) => {
+        document.getElementById('active-elem').innerText = "ACTIVE: " + n;
+    };
+
+    const addFocusUpdates = (elem, name) => {
+        elem.addEventListener('blur', () => {
+            lost.innerText = "Blur: " + name;
+            setActive(document.activeElement.id);
+        });
+        elem.addEventListener('focusin', () => {
+            gained.innerText = "Focusin: " + name;
+            setActive(document.activeElement.id);
+        });
+    };
+
+    addFocusUpdates(document.getElementById('input-name'), "NAME");
+    addFocusUpdates(document.getElementById('input-occupation'), "OCCUPATION");
+
+  </script>
+</body>
+</html>
+
+

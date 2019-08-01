@@ -17,7 +17,6 @@ import           Data.Kind                          (Type)
 import           Data.Maybe                         (isJust, isNothing)
 
 import           Data.Text                          (Text)
-import qualified Data.Text.Encoding                 as TE
 
 import           Text.URI                           (URI)
 import           Text.URI.QQ                        (uri)
@@ -43,6 +42,15 @@ import           Clay.Elements                      (input)
 import           Clay.Selector                      (byId, ( # ))
 
 import           General.Types
+
+type WDCmd g m = 
+  ( MonadGen g
+  , MonadTest m
+  , MonadIO m
+  ) 
+  => Env 
+  -> Sess 
+  -> Command g m Model
 
 newtype Cmd a (v :: Type -> Type) = Cmd a
   deriving (Eq, Show)
@@ -84,18 +92,19 @@ nonReservedInput =
     ['\x007f'] <>
     ['\x0080' .. '\x009f'] <>
     ['\55296'..'\57343'] <>
-    W.reservedUnicodeRange
+    W.reservedRange
   )) Gen.unicodeAll
 
-cSendKeys :: forall g m. (MonadGen g, MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cSendKeys :: forall g m. WDCmd g m
 cSendKeys _ _ =
   let
     gen :: Model Symbolic -> Maybe (g (SendKeys Symbolic))
-    gen m | m ^. modelKeysChecked . to not = case (m ^. modelElementApi, m ^. modelKeysSent) of
-              (Just eApi, Nothing) -> pure $ SendKeys eApi <$> 
-                Gen.text (Range.linear 0 100) nonReservedInput
-              _                    -> Nothing
-          | otherwise = Nothing
+    gen m = if not (m ^. modelKeysChecked) then 
+      case (m ^. modelElementApi, m ^. modelKeysSent) of
+       (Just eApi, Nothing) -> pure $ SendKeys eApi <$> Gen.text (Range.linear 0 100) nonReservedInput
+       _                    -> Nothing
+      else
+        Nothing
 
     exec :: SendKeys Concrete -> m ()
     exec (SendKeys elemApi textInput) = evalIO . void $
@@ -103,11 +112,16 @@ cSendKeys _ _ =
 
   in
     Command gen exec
-    [ Require $ \m _ -> isJust (_modelElementApi m) && isNothing (_modelKeysSent m) && not (_modelKeysChecked m)
-    , Update $ \m (SendKeys _ sent) _ -> m & modelKeysSent ?~ sent
+    [ Require $ \m _ -> 
+        isJust (_modelElementApi m) && -- We need an element API
+        isNothing (_modelKeysSent m) &&  -- Can't have sent any keys yet
+        not (_modelKeysChecked m) -- Need to have checked the last in put first
+
+    , Update $ \m (SendKeys _ sent) _ ->
+        m & modelKeysSent ?~ sent
     ]
 
-cClearKeys :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cClearKeys :: forall g m. WDCmd g m
 cClearKeys _ _ =
   let
     gen :: Model Symbolic -> Maybe (g (ClearKeys Symbolic))
@@ -119,12 +133,10 @@ cClearKeys _ _ =
   in
     Command gen exec
     [ Require $ \m _ -> m ^. modelKeysChecked && isJust (m ^. modelKeysSent)
-    , Update $ \m _ _ -> m
-                         & modelKeysSent .~ Nothing
-                         & modelKeysChecked .~ False
+    , Update $ \m _ _ -> m & modelKeysSent .~ Nothing & modelKeysChecked .~ False
     ]
 
-cCheckSentKeys :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cCheckSentKeys :: forall g m. WDCmd g m
 cCheckSentKeys _ _sess =
   let
     canCheckSentKeys m
@@ -140,15 +152,18 @@ cCheckSentKeys _ _sess =
   in
     Command gen exec
     [ Require $ \m (CheckSentKeys _ ks) ->
-        (isJust $ canCheckSentKeys m) && maybe False (== ks) (m ^. modelKeysSent)
+        (isJust $ canCheckSentKeys m) && 
+        maybe False (== ks) (m ^. modelKeysSent)
+
     , Update $ \m _ _ ->
         m & modelKeysChecked .~ True
+
     , Ensure $ \_ _ (CheckSentKeys _ inp) out -> case out of
-        W.Textual u -> TE.encodeUtf8 inp === u
+        W.Textual u -> inp === u
         _           -> failure
     ]
 
-cFindElement :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cFindElement :: forall g m. WDCmd g m
 cFindElement env (Sess _ sCli) =
   let
     readyFindElem m = m ^. modelAtUrl && isNothing (_modelElementApi m)
@@ -167,7 +182,7 @@ cFindElement env (Sess _ sCli) =
     , Update $ \m _ out -> m & modelElementApi ?~ out
     ]
 
-cNavigateTo :: forall g m. (MonadGen g , MonadTest m , MonadIO m) => Env -> Sess -> Command g m Model
+cNavigateTo :: forall g m. WDCmd g m
 cNavigateTo _ sessApi =
   let
     gen :: Model Symbolic -> Maybe (g (Cmd LoadUrl Symbolic))

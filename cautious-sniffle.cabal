@@ -18,13 +18,10 @@ common base-deps
     bytestring              >= 0.10.8 && < 0.11,
     bifunctors              >= 5.5.4 && < 5.6,
     containers              >= 0.6.0 && < 0.7,
+    linear,
     clay                    >= 0.13.1 && < 0.14,
     mtl                     >= 2.2.2 && < 2.3,
     text                    >= 1.2.3 && < 1.3,
-    text-icu,
-    resourcet,
-    exceptions,
-    
     contravariant           >= 1.5.2 && < 1.6,
     dependent-map           >= 0.2.5 && < 0.3,
     dependent-sum           >= 0.5 && < 0.6,
@@ -64,6 +61,7 @@ library
                      , Protocol.Webdriver.ClientAPI.Types.LogSettings
                      , Protocol.Webdriver.ClientAPI.Types.ProxySettings
                      , Protocol.Webdriver.ClientAPI.Types.Keys
+                     , Protocol.Webdriver.ClientAPI.Types.Actions
 
                      , Servant.API.Client.HollowBody
 

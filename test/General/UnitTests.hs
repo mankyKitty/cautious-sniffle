@@ -8,8 +8,8 @@ import           Control.Monad                      (void)
 import           Test.Tasty
 import           Test.Tasty.HUnit
 
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
 
 import           Text.URI.QQ                        (uri)
 
@@ -24,16 +24,22 @@ import           Clay.Selector                      (byId, ( # ))
 
 import           General.Types
 
+nameInputId :: Text
+nameInputId = "input-name"
+
+occupationInputId :: Text
+occupationInputId = "input-occupation"
+
 openSession :: WDCore IO -> IO Sess
 openSession core = (\i -> Sess i (_mkSession core i)) . W._sessionId . W.getSuccessValue
-  <$> W.newSession (_core core) chromeSession
+  <$> W.newSession (_core core) firefoxSession
 
 closeSession :: Sess -> IO ()
 closeSession = void . W.deleteSession . _sessClient
 
-fetchInputElement :: Env -> W.SessionAPI (AsClientT IO) -> IO (W.ElementAPI (AsClientT IO))
-fetchInputElement env client = _mkElement (_envWDCore env) client . W.getSuccessValue
-  <$> W.findElement client (W.ByCss (input # byId "input-name"))
+fetchInputElement :: Text -> Env -> W.SessionAPI (AsClientT IO) -> IO (W.ElementAPI (AsClientT IO))
+fetchInputElement elemId env client = _mkElement (_envWDCore env) client . W.getSuccessValue
+  <$> W.findElement client (W.ByCss (input # byId elemId))
 
 testPrompt :: IO Sess -> TestTree
 testPrompt iosess = testGroup "Prompt actions"
@@ -59,6 +65,33 @@ testPrompt iosess = testGroup "Prompt actions"
     triggerPrompt client = client <$ W.executeScript client
       (W.ExecuteScript ("window.prompt(\"" <> promptText <> "\")") mempty)
 
+testPerformKeyActions :: IO Sess -> TestTree
+testPerformKeyActions iosess = testCaseSteps "Perform keyboard actions" $ \step -> do
+  client <- _sessClient <$> iosess
+  let
+    findElemId css =
+      W.getSuccessValue <$> W.findElement client (W.ByCss css)
+
+    pressTab = do
+      step "TAB key down" *> W.performActions client (W.PerformActions [tabKey W.KeyDown])
+      step "TAB key released" *> W.releaseActions client
+
+  -- reset the page
+  W.refresh client
+  
+  nameInp <- findElemId $ input # byId nameInputId
+  occInp <- findElemId $ input # byId occupationInputId
+
+  pressTab
+  step "Get selected element"
+  (W.getSuccessValue <$> W.getActiveElement client) >>= (@?= nameInp)
+
+  pressTab
+  step "Get selected element"
+  (W.getSuccessValue <$> W.getActiveElement client) >>= (@?= occInp)
+  where
+    tabKey ka = W.Action W.KeyAction (W.ActionId "keyboard") Nothing [ka W.tab]
+
 unitTests :: IO Env -> (Env -> IO ()) -> TestTree
 unitTests start stop = withResource start stop $ \ioenv ->
   withResource (ioenv >>= openSession . _envWDCore) closeSession $ \iosess -> testGroup "Unit Tests"
@@ -77,33 +110,21 @@ unitTests start stop = withResource start stop $ \ioenv ->
     , testCaseSteps "getProperty Types" $ \step -> do
         elemClient <- fetchElemClient ioenv iosess
         let getProp = fmap W.getSuccessValue . W.getElementProperty elemClient
-        step "textual" >> getProp "id" >>= (@?= W.Textual "input-name")
-        step "numeric" >> getProp "tabIndex" >>= (@?= W.Numeric 0)
-        step "boolean" >> getProp "required" >>= (@?= W.Boolean True)
-        step "other (serialised as JSON)" >> getProp "children" >>= \o -> case o of
-          W.OtherVal _ -> pure ()
-          _            -> assertFailure "Not a JSON value!"
+        step "textual" *> getProp "id" >>= (@?= W.Textual "input-name")
+        step "numeric" *> getProp "tabIndex" >>= (@?= W.Numeric 0)
+        step "boolean" *> getProp "required" >>= (@?= W.Boolean True)
 
     , testCaseSteps "Clear element" $ \step -> do
-        step "findElement"
-        elemClient <- fetchElemClient ioenv iosess
-
         let keys = "taco taco"
-
-        step "element is empty"
-        hasTextVal elemClient ""
-
-        step "sendKeys"
-        _ <- W.elementSendKeys elemClient (W.ElementSendKeys keys)
-        step "element has sent keys"
-        hasTextVal elemClient keys
-
-        step "clearElement"
-        _ <- W.elementClear elemClient
-        step "element is cleared"
-        hasTextVal elemClient ""
+        elemClient <- step "findElement" *> fetchElemClient ioenv iosess
+        step "element is empty"      *> hasTextVal elemClient ""
+        step "sendKeys"              *> W.elementSendKeys elemClient (W.ElementSendKeys keys)
+        step "element has sent keys" *> hasTextVal elemClient keys
+        step "clearElement"          *> W.elementClear elemClient
+        step "element is cleared"    *> hasTextVal elemClient ""
 
     , testPrompt iosess
+    , testPerformKeyActions iosess
 
     , testCase "sendKeys with a backspace" $ do
         elemClient <- fetchElemClient ioenv iosess
@@ -112,9 +133,9 @@ unitTests start stop = withResource start stop $ \ioenv ->
     ]
   ]
   where
-    fetchElemClient ioenv iosess = ioenv >>= \env -> 
-      iosess >>= fetchInputElement env . _sessClient
+    fetchElemClient ioenv iosess = ioenv >>= \env ->
+      iosess >>= fetchInputElement nameInputId env . _sessClient
 
-    hasTextVal cli v = 
-      (W.getSuccessValue <$> W.getElementProperty cli "value") >>= 
-        (@?= W.Textual (TE.encodeUtf8 v))
+    hasTextVal cli v =
+      (W.getSuccessValue <$> W.getElementProperty cli "value") >>=
+        (@?= W.Textual v)

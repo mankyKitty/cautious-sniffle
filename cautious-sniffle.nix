@@ -1,10 +1,10 @@
 { mkDerivation, base, base64-bytestring, bifunctors, bytestring
 , clay, containers, contravariant, dependent-map, dependent-sum
 , dependent-sum-template, errors, exceptions, generics-sop
-, hedgehog, http-client, lens, modern-uri, mtl, natural, process
-, resourcet, scientific, scotty, semigroupoids, servant
+, hedgehog, http-client, lens, linear, modern-uri, mtl, natural
+, process, scientific, scotty, semigroupoids, servant
 , servant-client, servant-client-core, servant-waargonaut, stdenv
-, tasty, tasty-hedgehog, tasty-hunit, text, text-icu, time, vector
+, tasty, tasty-hedgehog, tasty-hunit, text, time, vector
 , waargonaut, warp
 }:
 mkDerivation {
@@ -14,19 +14,17 @@ mkDerivation {
   libraryHaskellDepends = [
     base base64-bytestring bifunctors bytestring clay containers
     contravariant dependent-map dependent-sum dependent-sum-template
-    errors generics-sop http-client lens modern-uri mtl natural
-    resourcet scientific semigroupoids servant servant-client
-    servant-client-core servant-waargonaut text text-icu time vector
-    waargonaut
+    errors generics-sop http-client lens linear modern-uri mtl natural
+    scientific semigroupoids servant servant-client servant-client-core
+    servant-waargonaut text time vector waargonaut
   ];
   testHaskellDepends = [
     base base64-bytestring bifunctors bytestring clay containers
     contravariant dependent-map dependent-sum dependent-sum-template
-    errors exceptions generics-sop hedgehog http-client lens modern-uri
-    mtl natural process resourcet scientific scotty semigroupoids
+    errors exceptions generics-sop hedgehog http-client lens linear
+    modern-uri mtl natural process scientific scotty semigroupoids
     servant servant-client servant-client-core servant-waargonaut tasty
-    tasty-hedgehog tasty-hunit text text-icu time vector waargonaut
-    warp
+    tasty-hedgehog tasty-hunit text time vector waargonaut warp
   ];
   license = "unknown";
   hydraPlatforms = stdenv.lib.platforms.none;

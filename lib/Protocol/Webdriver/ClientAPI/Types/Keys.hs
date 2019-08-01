@@ -1,7 +1,7 @@
 module Protocol.Webdriver.ClientAPI.Types.Keys where
 
-reservedUnicodeRange :: [Char]
-reservedUnicodeRange = ['\xe000' .. '\xF8FF']
+reservedRange :: [Char]
+reservedRange = ['\xe000' .. '\xF8FF']
 
 null :: Char
 null = '\xe000'
