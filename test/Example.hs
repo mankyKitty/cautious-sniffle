@@ -38,8 +38,8 @@ import qualified Waargonaut.Generic                                      as G
 
 baseUrl :: C.BaseUrl
 baseUrl = C.BaseUrl C.Http "localhost" 4444
-  ""                            -- When using geckodriver directly
-  -- "/wd/hub"                     -- When using selenium
+  ""           -- When using geckodriver directly
+  -- "/wd/hub" -- When using selenium
 
 firefox :: WD.Capabilities
 firefox = WD.firefox
@@ -72,8 +72,8 @@ webdriverExample = do
     (WD.NewSession firefox Nothing Nothing)
 
   -- We've created a session, so use the session id to access our client.
-  -- NB: This is the only time we'll need to explicity handle an ID
   let sessClient = WD._mkSession core (WD._sessionId newSess)
+  -- NB: This is the only time we'll need to explicity handle the session Id.
 
   -- We use the 'modern-uri' package to handle the creation of correct URLs
   -- This can also be created inline using quasiquotes: [uri|http://foo.com.au|]
