@@ -94,7 +94,7 @@ webdriverExample = do
       -- Try to retrieve the specified property from the given element.
       p <- WD.getElementProperty ele prop
       -- Check if the value of that property matches our expectations.
-      unless (WD.getSuccessValue p == orig) $ error msg
+      unless (WD.getSuccessValue p == WD.Textual orig) $ error msg
 
   -- Create element clients for some elements on the web page.
   button <- getElem Clay.button buttonId
