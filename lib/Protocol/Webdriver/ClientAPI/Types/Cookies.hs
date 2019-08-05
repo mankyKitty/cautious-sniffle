@@ -3,9 +3,15 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+-- | A loose representation of a cookie as described in the WebDriver
+-- [spec](https://w3c.github.io/webdriver/#cookies)
+--
 module Protocol.Webdriver.ClientAPI.Types.Cookies
-  ( Cookie
+  ( -- * Types
+    Cookie
   , HasCookie (..)
+
+    -- * Helpers
   , encCookie
   , decCookie
   ) where
@@ -29,6 +35,7 @@ import           Waargonaut.Types.Json                       (Json)
 
 import           Generics.SOP.TH                             (deriveGeneric)
 
+-- | A cookie, singular, as indicated by the name, which is not plural.
 data Cookie = Cookie
   { _cookieName       :: Text
   , _cookieValue      :: Json

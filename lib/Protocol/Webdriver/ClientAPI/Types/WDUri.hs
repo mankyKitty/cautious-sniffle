@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+-- | Wrapper of the 'URI' type from the [modern-uri](https://hackage.haskell.org/package/modern-uri) package.
 module Protocol.Webdriver.ClientAPI.Types.WDUri where
 
 import           Control.Exception                           (displayException,

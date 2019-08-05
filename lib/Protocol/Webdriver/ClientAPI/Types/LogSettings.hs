@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- | Log settings to describe the required verbosity from the driver.
+--
 module Protocol.Webdriver.ClientAPI.Types.LogSettings where
 
 import           Control.Error.Util                          (note)

@@ -5,6 +5,10 @@
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
+-- | The capabilities of a WebDriver session define the browser(s)
+-- that are acceptable, as well as any specific configuration items for
+-- the individual browsers when chosen, or the session as a whole.
+-- 
 module Protocol.Webdriver.ClientAPI.Types.Capabilities 
   ( 
     -- * Types
@@ -77,6 +81,7 @@ import           Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox (Firefo
                                                                           decFirefoxCaps,
                                                                           encFirefoxCaps)
 
+-- | Character selection.
 data Browser
   = Firefox
   | Chrome
@@ -120,6 +125,7 @@ decPageLoad = decodeFromReadUCFirst "PageLoad"
 encPageLoad :: Applicative f => E.Encoder f PageLoad
 encPageLoad = encodeShowToLower
 
+-- | Stats are point-buy.
 data Platform
   = Linux
   | Unix
@@ -139,6 +145,7 @@ encPlatform = encodeToLower $ \case
   Platform p -> T.unpack p
   p          -> show p
 
+-- | When prompts or alerts appear, define some default behaviour.
 data PromptHandling
   = Dismiss
   | Accept
@@ -165,6 +172,7 @@ encPromptHandling = g >$< E.text
     g AcceptNotify  = "accept and notify"
     g Ignore        = "ignore"
 
+-- | The various general capability options. Not all are required.
 data Capability a where
   BrowserName         :: Capability Browser
   BrowserVersion      :: Capability BrowserVersionString
@@ -245,12 +253,18 @@ decCapabilities = decodeDMap
 
     atDM = dmatKey capabilityKeyText
 
+-- | Default firefox browser capabilities
 firefox :: Capabilities
 firefox = singleton BrowserName (pure Firefox)
 
+-- | Default chrome browser capabilities
 chrome :: Capabilities
 chrome = singleton BrowserName (pure Chrome)
 
+-- | Set the browser to be run in "headless" mode.
+--
+-- __Will need to be expanded with the various settings required for different browsers.__
+--
 asHeadless :: Capabilities -> Capabilities
 asHeadless c0 = case runIdentity <$> c0 ^. dmat BrowserName of
   Nothing      -> c0

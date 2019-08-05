@@ -6,6 +6,10 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+-- | This is a helper combinator for Servant that defaults the body of
+-- the route it is included in to be an empty thing based on the
+-- 'Servant.API.MimeRender' instance of the type it is instantiated
+-- with.
 module Servant.API.Client.HollowBody where
 
 import           Data.Kind           (Type)
@@ -17,6 +21,12 @@ import           Servant.API         ((:>), HasLink (..), MimeRender (..),
 import           Servant.Client      (HasClient (..))
 import           Servant.Client.Core (setRequestBodyLBS)
 
+-- | Servant API route combinator for defaulting a request body to be "hollow".
+--
+-- @
+-- .. "clear" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
+-- @
+--
 data HollowBody (contentTypes :: [*]) deriving Typeable
 
 instance HasLink sub => HasLink (HollowBody contentTypes :> sub :: Type) where

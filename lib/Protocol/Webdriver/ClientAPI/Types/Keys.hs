@@ -1,3 +1,7 @@
+-- | Helper definitions for the Unicode encoding of specific keyboard keys.
+--
+-- __Not exhaustive__
+--
 module Protocol.Webdriver.ClientAPI.Types.Keys where
 
 reservedRange :: [Char]

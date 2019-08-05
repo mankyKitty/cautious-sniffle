@@ -98,7 +98,7 @@ unitTests start stop = withResource start stop $ \ioenv ->
   [ testCase "navigateTo" $ do
       client <- _sessClient <$> iosess
       let target = W.WDUri [uri|http://localhost:9999/|]
-      currentUri <- W.navigateTo client target >> W.getSuccessValue <$> W.getUrl client
+      currentUri <- W.navigateTo client target >> W.getSuccessValue <$> W.getCurrentUrl client
       currentUri @?= target
 
   , after AllSucceed "navigateTo" $ testGroup "after navigation"

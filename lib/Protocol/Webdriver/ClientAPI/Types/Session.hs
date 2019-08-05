@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+-- | Constructing a new session or handling the 'SessionId'.
 module Protocol.Webdriver.ClientAPI.Types.Session
   ( NewSession (..)
   , SessionId (..)
@@ -18,12 +19,14 @@ import           Protocol.Webdriver.ClientAPI.Types.Capabilities (Capabilities, 
                                                                   encCapabilities)
 import           Protocol.Webdriver.ClientAPI.Types.Internal     (WDJson)
 
+-- | For creating a new session.
 data NewSession = NewSession
   { _newSessionCapabilities :: Capabilities
   , _newSessionUsername     :: Maybe Text
   , _newSessionPassword     :: Maybe Text
   }
 
+-- | Wrapper for the value that represents the current session.
 newtype SessionId = SessionId
   { unSessionId :: Text
   }
@@ -32,6 +35,7 @@ newtype SessionId = SessionId
 instance ToHttpApiData SessionId where
   toUrlPiece (SessionId sid) = sid
 
+-- | Returned upon successful creation of a new session.
 data Session = Session
   { _sessionId   :: SessionId
   , _sessionCaps :: Capabilities

@@ -6,6 +6,8 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+-- | Firefox specific capabilities.
+--
 module Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox
   ( -- * Types
     PrefVal (..)
@@ -60,6 +62,7 @@ import qualified Waargonaut.Encode                              as E
 
 -- Capabilities from https://firefox-source-docs.mozilla.org/testing/geckodriver/Capabilities.html
 
+-- | Wrapper type to indicate the type of the preference value being set/read.
 data PrefVal
   = BoolPref Bool
   | TextPref Text
@@ -106,6 +109,9 @@ decGeneralPrefs = GeneralFFPrefs . Map.fromList <$> D.objectAsKeyValues D.text d
 encGeneralPrefs :: Applicative f => E.Encoder f GeneralFFPrefs
 encGeneralPrefs = unGeneralPrefs >$< E.mapToObj encPrefVal id
 
+-- | Set of Firefox specific capability options.
+--
+-- Refer to the [geckodriver](https://firefox-source-docs.mozilla.org/testing/geckodriver/Capabilities.html) for more info.
 data FirefoxCap a where
   FFBinary  :: FirefoxCap FilePath
   FFArgs    :: FirefoxCap [Text]

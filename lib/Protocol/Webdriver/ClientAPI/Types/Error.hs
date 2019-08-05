@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+-- | The errors returned by WebDrivers are expected for be of a particular structure.
+--
 module Protocol.Webdriver.ClientAPI.Types.Error 
   ( Error (..)
   , encError

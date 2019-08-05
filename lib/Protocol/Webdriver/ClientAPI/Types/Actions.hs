@@ -7,6 +7,8 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+-- | Types for use with the ['performActions'](https://w3c.github.io/webdriver/#perform-actions) command.
+--
 module Protocol.Webdriver.ClientAPI.Types.Actions where
 
 import           Control.Lens                                 ((^.))
@@ -21,8 +23,7 @@ import           Linear.V2                                    (V2, _x, _y)
 import qualified Waargonaut.Decode                            as D
 import qualified Waargonaut.Encode                            as E
 import           Waargonaut.Generic                           (JsonDecode (..),
-                                                               JsonEncode (..),
-                                                               gEncoder)
+                                                               JsonEncode (..))
 
 import           Protocol.Webdriver.ClientAPI.Types.ElementId (ElementId,
                                                                decElementId,
@@ -30,9 +31,10 @@ import           Protocol.Webdriver.ClientAPI.Types.ElementId (ElementId,
 import           Protocol.Webdriver.ClientAPI.Types.Internal  (WDJson, decodeFromReadUCFirst,
                                                                encodeShowToLower,
                                                                singleValueObj,
-                                                               textMatch,
-                                                               trimWaargOpts)
+                                                               textMatch)
 
+-- | Actions can be associated with specific identifiers. Such as "keyboard", or "finger1" & "finger2".
+--
 newtype ActionId = ActionId { _unActionId :: Text }
   deriving (Eq, Show)
 
@@ -45,6 +47,11 @@ decodeActionId = ActionId <$> D.text
 instance JsonEncode WDJson ActionId where mkEncoder = pure encodeActionId
 instance JsonDecode WDJson ActionId where mkDecoder = pure decodeActionId
 
+-- | Time in milliseconds that the given action will take:
+--
+-- - How long the key is help down
+-- - How long the pointer takes to move a given distance
+--
 newtype Duration = Duration { _unDuration :: Int }
   deriving (Eq, Show)
 
@@ -57,6 +64,7 @@ decodeDuration = Duration <$> D.int
 instance JsonEncode WDJson Duration where mkEncoder = pure encodeDuration
 instance JsonDecode WDJson Duration where mkDecoder = pure decodeDuration
 
+-- | The number of the mouse button being pressed.
 newtype Button = Button { _unButton :: Word8 }
   deriving (Eq, Show)
 
@@ -69,6 +77,7 @@ decodeButton = Button <$> D.integral
 instance JsonEncode WDJson Button where mkEncoder = pure encodeButton
 instance JsonDecode WDJson Button where mkDecoder = pure decodeButton
 
+-- | Where the pointer is moving from.
 data PointerOrigin
   = Viewport
   | Pointer
@@ -128,6 +137,7 @@ decodeActionType =
 instance JsonEncode WDJson ActionType where mkEncoder = pure encodeActionType
 instance JsonDecode WDJson ActionType where mkDecoder = pure decodeActionType
 
+-- | The granular component of an action being performed.
 data ActionObject
   = Pause Duration
   | PointerUp Button
@@ -135,7 +145,7 @@ data ActionObject
   | PointerMove Duration PointerOrigin (V2 Int)
   | KeyUp Char
   | KeyDown Char
-  -- | PointerCancel -- undefined in the spec
+  -- PointerCancel -- undefined in the spec
   deriving (Eq, Show)
 
 encodeActionObject :: Applicative f => E.Encoder f ActionObject
@@ -159,6 +169,7 @@ encodeActionObject = E.mapLikeObj $ \case
 
 instance JsonEncode WDJson ActionObject where mkEncoder = pure encodeActionObject
 
+-- | The action in it's entirety, which is made of up smaller individual 'ActionObject's
 data Action = Action
   { _actionType       :: ActionType
   , _actionId         :: ActionId

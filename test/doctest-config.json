@@ -1,0 +1,4 @@
+{
+    "sourceFolders": ["lib"],
+    "ignore": ["test"]
+}

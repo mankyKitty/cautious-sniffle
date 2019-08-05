@@ -4,6 +4,10 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
+-- | For describing proxy settings to the driver, for more complicated WebDriver testing environments.
+--
+-- Refer to the [spec](https://w3c.github.io/webdriver/#proxy) for more information.
+--
 module Protocol.Webdriver.ClientAPI.Types.ProxySettings where
 
 import           Data.Functor.Contravariant                  ((>$<))
@@ -70,6 +74,7 @@ decSocksVersion = SocksVersion <$> D.integral
 encSocksVersion :: Applicative f => E.Encoder f SocksVersion
 encSocksVersion = unSocksVersion >$< E.integral
 
+-- | Set of proxy setting keys and their respective values.
 data ProxySetting a where
   PType         :: ProxySetting ProxyType
   AutoconfigUrl :: ProxySetting Text

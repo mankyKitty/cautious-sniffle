@@ -1,5 +1,5 @@
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingStrategies    #-}
+{-# LANGUAGE DerivingVia           #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -9,8 +9,17 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+-- | Source of the various types and their respective
+-- encoders/decoders for use with the WebDriver API.
+--
+-- The types vary in complexity but are provided to try to provide at least a minimal
+-- level of type safety when dealing with the WebDriver API. Some types are deliberately
+-- simple so that you are not restricted from dialing up the safety in accordance with
+-- your requirements.
+--
 module Protocol.Webdriver.ClientAPI.Types
-  ( TakeElementScreenshot (..)
+  ( -- * Types
+    TakeElementScreenshot (..)
   , CreateWindow (..)
   , ElementSendKeys (..)
   , ExecuteAsyncScript (..)
@@ -20,15 +29,20 @@ module Protocol.Webdriver.ClientAPI.Types
   , SwitchToWindow (..)
   , WDRect (..)
   , SwitchToFrame (..)
+  , PropertyVal (..)  
+  , FrameId (..)      
+  , WindowType (..)   
+  , WindowHandle (..) 
 
-  , PropertyVal (..), encodePropertyVal, decodePropertyVal
-  , FrameId (..), encFrameId, decFrameId
-  , WindowType (..), encWindowType, decWindowType
-  , WindowHandle (..), encWindowHandle, decWindowHandle
-
+    -- * Helpers
+  , encodePropertyVal, decodePropertyVal
+  , encFrameId, decFrameId
+  , encWindowType, decWindowType
+  , encWindowHandle, decWindowHandle     
   , printWindowHandle
   , checkWindowHandlePattern
 
+    -- * Rexports
   , module Protocol.Webdriver.ClientAPI.Types.Internal
   , module Protocol.Webdriver.ClientAPI.Types.ElementId
   , module Protocol.Webdriver.ClientAPI.Types.Error
@@ -88,11 +102,12 @@ import           Protocol.Webdriver.ClientAPI.Types.Timeout
 import           Protocol.Webdriver.ClientAPI.Types.WDUri
 import  Protocol.Webdriver.ClientAPI.Types.Actions
 
--- Each browsing context has an associated window handle which uniquely identifies it. This must be a String and must not be "current".
+-- | Each browsing context has an associated window handle which uniquely identifies
+-- it. This must be a String and must not be "current".
 data WindowHandle
--- The web window identifier is the string constant "window-fcc6-11e5-b4f8-330a88ab9d7f".
+  -- | The web window identifier is the string constant "window-fcc6-11e5-b4f8-330a88ab9d7f".
   = WebWindowId Text
--- The web frame identifier is the string constant "frame-075b-4da1-b6ba-e579c2d3230a".
+  -- | The web frame identifier is the string constant "frame-075b-4da1-b6ba-e579c2d3230a".
   | WebFrameId Text
   | NumericId Scientific
   deriving (Show, Eq)
@@ -140,11 +155,12 @@ instance JsonEncode WDJson SwitchToWindow where
 instance JsonDecode WDJson SwitchToWindow where
   mkDecoder = gDecoder $ trimWaargOpts "_switchToWindow"
 
+-- | Wrapper structure for the returned value of a property on an element.
 data PropertyVal
   = Numeric Scientific
   | Boolean Bool
   | Textual Text
-  -- | OtherVal Json
+  -- OtherVal Json
   deriving (Show, Eq)
 deriveGeneric ''PropertyVal
 
@@ -266,12 +282,7 @@ deriveGeneric ''ElementSendKeys
 
 encodeUtf8Char :: Applicative f => E.Encoder f Char
 encodeUtf8Char = E.encodeA (
-  pure .
-  J.Json .
-  flip J.JStr mempty .
-  J.JString' .
-  V.singleton .
-  J.utf8CharToJChar
+  pure . J.Json . flip J.JStr mempty . J.JString' . V.singleton . J.utf8CharToJChar
   )
 
 instance JsonEncode WDJson ElementSendKeys where
@@ -281,7 +292,9 @@ instance JsonEncode WDJson ElementSendKeys where
     E.atKey' "text" E.text (_elementSendKeysValue esk)
 
 newtype TakeElementScreenshot = TakeElementScreenshot
-  { _takeElementScreenshotScroll :: Maybe Bool }
+  { -- | Indicate if you would like the element scrolled into view.
+    _takeElementScreenshotScroll :: Maybe Bool 
+  }
   deriving (Show, Eq)
 deriveGeneric ''TakeElementScreenshot
 

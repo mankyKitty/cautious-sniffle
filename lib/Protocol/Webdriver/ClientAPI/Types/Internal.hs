@@ -9,6 +9,8 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
+-- | Widely used types and helper functions that currently don't have a better home.
+--
 module Protocol.Webdriver.ClientAPI.Types.Internal where
 
 import           Control.Error.Util         (note)
@@ -51,6 +53,8 @@ import           Waargonaut.Generic         (JsonDecode (..), JsonEncode (..),
                                              Options (_optionsFieldName),
                                              defaultOpts, trimPrefixLowerFirst,
                                              untag)
+
+-- | Tag for our Waargonaut encoding/decoding instances.
 data WDJson
 
 instance JsonDecode WDJson BSL.ByteString where
@@ -76,7 +80,7 @@ instance JsonEncode WDJson BS.ByteString where
 instance JsonEncode WDJson BSL.ByteString where
   mkEncoder = pure encodeLazyByteString
 
--- Used in the HollowBody so () is encoded as {}, as Webdriver endpoints can not
+-- | Used in the HollowBody so () is encoded as {}, as Webdriver endpoints can not
 -- require any input in the body of a request but the driver will fail if there
 -- isn't at least a JSON object.
 instance JsonEncode WDJson () where
@@ -91,28 +95,49 @@ withString = withA D.string
 withText :: Monad f => (Text -> Either Text a) -> D.Decoder f a
 withText = withA D.text
 
+-- | Decode something based on a precise text match, the first input
+-- is used in the error value and the second input is used for the
+-- comparison. Creates a 'D.Decoder' for that specific constructor.
+--
+-- @
+-- data MyType = Foo | Bar
+--
+-- textMatch "MyType" "foo" Foo :: Monad f => D.Decoder f MyType
+-- @
+textMatch :: Monad f => Text -> Text -> a -> D.Decoder f a
 textMatch t x a = withText (bool (Left t) (Right a) . (== x))
 
+-- | Decode based on the 'Read' instance for a type, expecting the first character to be a lower case.
 decodeFromReadUCFirst :: (Read a, Monad f) => Text -> D.Decoder f a
 decodeFromReadUCFirst l = withString (note l . readMaybe . over _head C.toUpper)
 
+-- | Encode something via the given @a -> String@, the result of which is then set to lower case.
 encodeToLower :: Applicative f => (a -> String) -> E.Encoder f a
 encodeToLower f = T.toLower . T.pack . f >$< E.text
 
+-- | Encode a value based on its 'Show' instance that is then set to lower case.
 encodeShowToLower :: (Show a, Applicative f) => E.Encoder f a
 encodeShowToLower = encodeToLower show
 
+-- | Create an object with a single key:value pair.
 singleValueObj :: Applicative f => Text -> E.Encoder' a -> E.Encoder f a
 singleValueObj k = E.mapLikeObj . E.atKey' k
 
+-- | Used with creating instances for 'JsonEncode' and 'JsonDecode',
+-- to provide a prefix that is removed from field names.
 trimWaargOpts :: Text -> Options
 trimWaargOpts s = defaultOpts { _optionsFieldName = trimPrefixLowerFirst s }
 
 infixr 2 ~=>
 
+-- | Infix operator to make it a bit easier to set values on a 'DMap'.
 (~=>) :: (GCompare k, Applicative f) => k a -> a -> DMap k f -> DMap k f
 (~=>) k v = dmat k ?~ pure v
 
+-- | Update the setting on a nested 'DMap', the ergonomics for this
+-- aren't great but this makes it a bit easier to work with.
+--
+-- If the inner value is not set, this will create it.
 updateInnerSetting
   :: ( Applicative g
      , Applicative f
@@ -129,6 +154,7 @@ updateInnerSetting outerKey innerKey opt f dm0 = dm0 & dmat outerKey %~ Just . m
   (pure $ DM.singleton innerKey (pure opt))
   (fmap (dmat innerKey %~ Just . maybe (pure opt) (fmap f)))
 
+-- | Build a 'D.Decoder' for a specific key:value pair on a 'DMap'.
 dmatKey
   :: ( GCompare k
      , Monad g
@@ -142,6 +168,7 @@ dmatKey toText k d = D.atKeyOptional (toText k) d <&> \case
   Nothing -> DM.empty
   Just v  -> DM.singleton k (pure v)
 
+-- | Create a 'D.Decoder' for a 'DMap' given a list of the decoders for the individual key:value pairs.
 decodeDMap
   :: ( GCompare k
      , Monad f
@@ -171,12 +198,15 @@ instance JsonDecode WDJson a => JsonDecode WDJson (Vector a) where
 newtype Success a = Success { getSuccessValue :: a }
   deriving (Show, Eq, Functor)
 
+-- | Some commands return "null" as a successful value.
 instance JsonDecode WDJson () where
   mkDecoder = pure D.null
 
 instance JsonDecode WDJson a => JsonDecode WDJson (Success a) where
   mkDecoder = pure $ Success <$> D.atKey "value" (untag $ mkDecoder @WDJson)
 
+-- | Wrapper to differentiate what we expect to be a base64 encoded
+-- value. Used for the successful result of taking a screenshot.
 newtype Base64 = Base64
   { unBase64 :: ByteString }
   deriving (Show, Eq)

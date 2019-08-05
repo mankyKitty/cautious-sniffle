@@ -1,10 +1,12 @@
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TupleSections         #-}
+-- | Chrome/Chromium specific capabilities
+--
 module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome 
   ( -- * Types
     ChromeCap (..)
@@ -145,6 +147,10 @@ newtype WindowTypes = WindowTypes
   }
   deriving (Show, Eq)
 
+-- | Set of Chrome capabilities.
+--
+-- Refer to the [chromedriver](http://chromedriver.chromium.org/capabilities) for more info.
+--
 data ChromeCap a where
   ChrArgs             :: ChromeCap [Text]
   ChrBinary           :: ChromeCap FilePath

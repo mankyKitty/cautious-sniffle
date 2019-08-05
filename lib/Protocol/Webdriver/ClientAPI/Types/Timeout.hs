@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+-- | Timeout settings for the driver to use.
+--
 module Protocol.Webdriver.ClientAPI.Types.Timeout where
 
 import           Data.Functor.Contravariant                  ((>$<))
@@ -11,6 +13,11 @@ import qualified Waargonaut.Encode                           as E
 import           Waargonaut.Generic                          (JsonDecode (..),
                                                               JsonEncode (..))
 
+-- | The given timeout period.
+--
+-- A value of less than 0 or greater than (2^16 – 1) will result in an error.
+-- [spec](https://w3c.github.io/webdriver/#timeouts)
+--
 newtype TimeoutVal = TimeoutVal
   { unTimeoutVal :: Word32 }
   deriving (Show, Eq)

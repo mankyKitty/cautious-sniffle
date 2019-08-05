@@ -2,6 +2,12 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+-- | Locating elements on the page is done via various location strategies.
+--
+-- The most obvious of which is using CSS locators, but a few other options are available
+-- as well. To help write the CSS, the [clay](https://hackage.haskell.org/package/clay)
+-- package is used.
+--
 module Protocol.Webdriver.ClientAPI.Types.LocationStrategy where
 
 import           Control.Monad                               ((>=>))
@@ -20,6 +26,7 @@ import           Clay.Selector                               (Selector,
 
 import           Protocol.Webdriver.ClientAPI.Types.Internal (WDJson)
 
+-- | The choices for how to locate element(s).
 data LocateUsing
   = ByCss Selector
   | LinkText Text
