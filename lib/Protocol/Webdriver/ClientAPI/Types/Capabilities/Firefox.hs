@@ -60,7 +60,6 @@ import           Protocol.Webdriver.ClientAPI.Types.Internal    (Base64,
 import qualified Waargonaut.Decode                              as D
 import qualified Waargonaut.Encode                              as E
 
--- Capabilities from https://firefox-source-docs.mozilla.org/testing/geckodriver/Capabilities.html
 
 -- | Wrapper type to indicate the type of the preference value being set/read.
 data PrefVal

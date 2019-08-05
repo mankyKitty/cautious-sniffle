@@ -1,23 +1,23 @@
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE GADTs #-}
 module Main where
 
 import           Control.Monad                                           (unless,
                                                                           void)
-import Data.Functor ((<&>))
 import           Data.Function                                           ((&))
+import           Data.Functor                                            ((<&>))
 import qualified Data.Text.IO                                            as TIO
 import qualified Data.Text.Lazy                                          as T
 
 import           Control.Monad.IO.Class                                  (MonadIO,
                                                                           liftIO)
 
+import qualified Protocol.Webdriver.ClientAPI                            as WD
 import           Protocol.Webdriver.ClientAPI.Types                      (WDJson,
                                                                           (~=>))
-import qualified Protocol.Webdriver.ClientAPI                            as WD
 import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF

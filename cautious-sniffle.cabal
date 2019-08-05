@@ -11,6 +11,7 @@ maintainer:          sclhiannan@gmail.com
 -- category:
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
+                   , test/doctest-config.json
 
 common base-deps
   build-depends:
