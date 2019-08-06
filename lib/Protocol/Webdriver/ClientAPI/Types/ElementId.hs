@@ -33,7 +33,7 @@ webElementIdentifier =
   -- Your guess is as good as mine for why it is this way. This could
   -- be used internally in the drivers for versioning? But there is no
   -- way to establish what this needs to be if it has changed. So
-  -- we'll get runtime failures later, yay.
+  -- we'll get runtime failures if it ever changes, yay.
   "element-6066-11e4-a52e-4f735466cecf"
 
 newtype ElementId = ElementId Text
@@ -48,7 +48,7 @@ decElementId = fmap ElementId $
 encElementId :: Applicative f => E.Encoder f ElementId
 encElementId = (\(ElementId eid) -> eid) >$< E.text
 
--- | Encodes the element id in a wrapper object with the 'webElementIdentifier' as the key.
+-- | Encodes the element id in a wrapper object with the @webElementIdentifier@ as the key.
 encElementIdObject :: Applicative f => E.Encoder f ElementId
 encElementIdObject = singleValueObj webElementIdentifier encElementId
 
