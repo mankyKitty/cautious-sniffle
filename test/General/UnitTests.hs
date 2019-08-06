@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 module General.UnitTests where
 
+import Control.Applicative (liftA2)
 import           Control.Monad                      (void)
 
 import           Test.Tasty
@@ -106,6 +107,10 @@ unitTests start stop = withResource start stop $ \ioenv ->
         elemClient <- fetchElemClient ioenv iosess
         idAttr <- W.getSuccessValue <$> W.getElementProperty elemClient "id"
         idAttr @?= W.Textual "input-name"
+
+    , testCase "Input to non-text type input" $ do
+        numI <- uncurry (fetchInputElement "input-age") =<< liftA2 (,) ioenv (_sessClient <$> iosess) 
+        W.elementSendKeys numI (W.ElementSendKeys "33") *> hasTextVal numI "33"
 
     , testCaseSteps "getProperty Types" $ \step -> do
         elemClient <- fetchElemClient ioenv iosess

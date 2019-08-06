@@ -34,7 +34,7 @@ localSelenium :: IO ProcessHandle
 localSelenium = do
   (f, _) <- openTempFile "/tmp/" "SELENIUM_WD_LOG.log"
   putStrLn $ "Selenium log file: " <> f
-  spawnCommand $ "selenium-server -port 4444 -debug -log " <> f
+  spawnCommand $ "selenium-server -port 4444 -log " <> f
 
 -- If we've started a driver then stop it
 stopDriver :: Maybe ProcessHandle -> IO ()
@@ -44,7 +44,7 @@ stopDriver = traverse_ terminateProcess
 startDriver :: Maybe BaseUrl -> IO (Maybe ProcessHandle)
 startDriver existingUrl = if isJust existingUrl then pure Nothing else do
   d <- pure <$> localSelenium
-  d <$ (putStrLn "Pause to allow selenium to start" >> threadDelay 2000000)
+  d <$ (putStrLn "Pause to allow selenium to start" *> threadDelay 2000000)
 
 manageDriverAndServer :: (IO Env -> (Env -> IO ()) -> TestTree) -> TestTree
 manageDriverAndServer f = askOption $ \(OverrideWDUrl existingWDUrl) ->
