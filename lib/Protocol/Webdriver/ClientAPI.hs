@@ -28,12 +28,17 @@ module Protocol.Webdriver.ClientAPI
   , defaultWebdriverClient
   , mkWDCoreClientM
   , mkWDCoreHoistedClient
+  , mkWDCoreComposeTClient
+  , mkWDCoreExceptTClient
 
     -- * Re-exports
   , module Protocol.Webdriver.ClientAPI.SessionAPI
   ) where
 
 import           Control.Lens                            (makeClassy)
+
+import Control.Monad.Except (ExceptT (..))
+import Data.Functor.Compose (Compose (..))
 
 import qualified GHC.Generics                            as GHC
 
@@ -100,7 +105,12 @@ defaultWebdriverClient = C.BaseUrl C.Http "localhost" 4444 "/wd/hub"
 -- | This is a helper structure that makes it easier to create and use
 -- the different subsets of webdriver commands.
 --
--- Create a 'WDCore' using one of the provided functions: 'mkWDCoreClientM' or 'mkWDCoreHoistedClient'.
+-- Create a 'WDCore' using one of the provided functions:
+--
+-- * @mkWDCoreClientM@
+-- * @mkWDCoreHoistedClient@
+-- * @mkWDCoreComposeTClient@
+-- * @mkWDCoreExceptTClient@
 --
 -- Then you can create a new session from the '_core':
 --
@@ -180,3 +190,11 @@ mkWDCoreHoistedClient h =
     (fromServant . withSession wdCoreH)
     (fromServant . withWindow)
     (\sess -> fromServant . withElement sess)
+
+-- | Lift the 'ClientM' to 'Compose IO (Either C.ServantError)'.
+mkWDCoreComposeTClient :: C.ClientEnv -> WDCore (Compose IO (Either C.ServantError))
+mkWDCoreComposeTClient env = mkWDCoreHoistedClient (Compose . flip C.runClientM env)
+
+-- | Lifts the 'ClientM' to 'ExceptT IO C.ServantError'
+mkWDCoreExceptTClient :: C.ClientEnv -> WDCore (ExceptT C.ServantError IO)
+mkWDCoreExceptTClient env = mkWDCoreHoistedClient (ExceptT . flip C.runClientM env)

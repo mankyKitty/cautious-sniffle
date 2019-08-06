@@ -22,7 +22,6 @@ import qualified Protocol.Webdriver.ClientAPI.Types                      as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities         as WD
 import qualified Protocol.Webdriver.ClientAPI.Types.Capabilities.Firefox as FF
 
-
 import qualified Network.HTTP.Client                                     as HTTP
 import           Servant.Client                                          (mkClientEnv,
                                                                           runClientM)
@@ -52,6 +51,7 @@ firefox = WD.firefox
       & FF.FFPrefs ~=> FF.newPrefs "app.update.auto" (FF.TextPref "no")
       & FF.FFArgs ~=> ["--headless"]
 
+-- Helper function to be able to print JSON encoded values
 printEncodable :: (G.JsonEncode WDJson a, MonadIO m) => a -> m ()
 printEncodable = liftIO . TIO.putStrLn . T.toStrict
   . E.simplePureEncodeText (G.untag $ G.mkEncoder @WDJson)
@@ -80,7 +80,7 @@ webdriverExample = do
   url <- URI.mkURI "http://uitestingplayground.com/textinput"
 
   -- Tell the driver to load the page
-  _ <- WD.navigateTo sessClient (WD.WDUri url)
+  WD.navigateTo sessClient (WD.WDUri url)
 
   -- Some helper functions
   let
@@ -101,20 +101,20 @@ webdriverExample = do
   textInput <- getElem Clay.input textInputId
 
     -- Send some input to the text field
-  _ <- WD.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
+  WD.elementSendKeys textInput $ WD.ElementSendKeys textInputValue
     -- Send a click to the button element
-  _ <- WD.elementClick button
+  WD.elementClick button
 
     -- As per the playground exercise, check that the button has the input text as the new value.
-  _ <- propEq button "innerHTML" textInputValue "button value mismatch"
+  propEq button "innerHTML" textInputValue "button value mismatch"
 
     -- Check that the text field has the expected input
-  _ <- propEq textInput "value" textInputValue "text input value mismatch"
+  propEq textInput "value" textInputValue "text input value mismatch"
 
     -- Clear the text field
-  _ <- WD.elementClear textInput
+  WD.elementClear textInput
     -- Check that the text field has been cleared.
-  _ <- propEq textInput "value" "" "text input should be empty"
+  propEq textInput "value" "" "text input should be empty"
 
     -- Close our session
   void $ WD.deleteSession sessClient
