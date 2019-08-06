@@ -47,7 +47,7 @@ common base-deps
     contravariant           >= 1.5.2 && < 1.6,
     dependent-map           >= 0.2.5 && < 0.3,
     dependent-sum           >= 0.5 && < 0.6,
-    dependent-sum-template  >= 0.1 && < 0.2,
+    dependent-sum-template  >= 0.0.0.1 && < 0.0.0.8,
     errors                  >= 2.3.0 && < 2.4,
     generics-sop            >= 0.4.0 && < 0.6,
     http-client             >= 0.5.14 && < 0.7,

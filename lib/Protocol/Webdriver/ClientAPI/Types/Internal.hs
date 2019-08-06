@@ -156,8 +156,7 @@ updateInnerSetting outerKey innerKey opt f dm0 = dm0 & dmat outerKey %~ Just . m
 
 -- | Build a 'D.Decoder' for a specific key:value pair on a 'DMap'.
 dmatKey
-  :: ( GCompare k
-     , Monad g
+  :: ( Monad g
      , Applicative f
      )
   => (k a -> Text)
@@ -172,7 +171,6 @@ dmatKey toText k d = D.atKeyOptional (toText k) d <&> \case
 decodeDMap
   :: ( GCompare k
      , Monad f
-     , Functor g
      )
   => [D.Decoder f (DMap k g)]
   -> D.Decoder f (DMap k g)

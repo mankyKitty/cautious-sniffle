@@ -1,12 +1,12 @@
-module General.TestOpts where
+module General.TestOpts
+  ( OverrideWDUrl (..)
+  ) where
 
-import           Data.Typeable       (Typeable)
 import           Test.Tasty.Options  (IsOption (..))
 
 import           Servant.Client.Core (BaseUrl, parseBaseUrl)
 
 newtype OverrideWDUrl = OverrideWDUrl (Maybe BaseUrl)
-  deriving Typeable
 
 instance IsOption OverrideWDUrl where
   defaultValue = OverrideWDUrl Nothing

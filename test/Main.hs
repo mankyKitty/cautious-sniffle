@@ -37,15 +37,15 @@ import           General.Types
 import           General.UnitTests
 
 managedSession  :: (IO (Env, Sess) -> TestTree) -> IO Env -> TestTree
-managedSession f ioenv = withResource initSession closeSession f
+managedSession f ioenv = withResource initSession endSession f
   where
-    closeSession (_, Sess _ sCli) =
+    endSession (_, Sess _ sCli) =
       W.getSuccessValue <$> W.deleteSession sCli
 
     initSession = do
       env <- ioenv
-      sess <- W.getSuccessValue <$> W.newSession (_core . _envWDCore $ env) firefoxSession
-      pure (env, Sess (W._sessionId sess) (_mkSession (_envWDCore env) (W._sessionId sess)))
+      s <- W.getSuccessValue <$> W.newSession (_core . _envWDCore $ env) firefoxSession
+      pure (env, Sess (W._sessionId s) (_mkSession (_envWDCore env) (W._sessionId s)))
 
 stateMachineTests :: IO Env -> (Env -> IO ()) -> TestTree
 stateMachineTests start stop = withResource start stop (managedSession smt)

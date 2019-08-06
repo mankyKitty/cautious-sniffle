@@ -78,7 +78,7 @@ newtype ClearKeys (v :: Type -> Type) = ClearKeys (Var (Opaque (W.ElementAPI (As
 instance HTraversable ClearKeys where
   htraverse f (ClearKeys eApi) = ClearKeys <$> htraverse f eApi
 
-boolGen :: MonadGen g => (Model Symbolic -> Bool) -> g (a Symbolic) -> Model Symbolic -> Maybe (g (a Symbolic))
+boolGen :: (Model Symbolic -> Bool) -> g (a Symbolic) -> Model Symbolic -> Maybe (g (a Symbolic))
 boolGen f g m = if f m then pure g else Nothing
 
 nonReservedInput :: MonadGen g => g Char

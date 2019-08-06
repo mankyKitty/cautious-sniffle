@@ -14,7 +14,6 @@ module Servant.API.Client.HollowBody where
 
 import           Data.Kind           (Type)
 import           Data.Proxy          (Proxy (..))
-import           Data.Typeable       (Typeable)
 
 import           Servant.API         ((:>), HasLink (..), MimeRender (..),
                                       contentType)
@@ -27,7 +26,7 @@ import           Servant.Client.Core (setRequestBodyLBS)
 -- .. "clear" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
 -- @
 --
-data HollowBody (contentTypes :: [*]) deriving Typeable
+data HollowBody (contentTypes :: [Type])
 
 instance HasLink sub => HasLink (HollowBody contentTypes :> sub :: Type) where
   type MkLink (HollowBody contentTypes :> sub) a = MkLink sub a

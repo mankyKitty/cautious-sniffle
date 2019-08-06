@@ -1,5 +1,3 @@
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE DerivingVia           #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -20,7 +18,6 @@
 module Protocol.Webdriver.ClientAPI.Types
   ( -- * Types
     TakeElementScreenshot (..)
-  , CreateWindow (..)
   , ElementSendKeys (..)
   , ExecuteAsyncScript (..)
   , ExecuteScript (..)
@@ -199,14 +196,6 @@ decWindowType = decodeFromReadUCFirst "WindowType"
 instance JsonEncode WDJson WindowType where mkEncoder = pure encWindowType
 instance JsonDecode WDJson WindowType where mkDecoder = pure decWindowType
 
-newtype CreateWindow = CreateWindow
-  { _unCreateWindow :: WindowType }
-  deriving (Show, Eq)
-deriveGeneric ''CreateWindow
-
-instance JsonEncode WDJson CreateWindow
-instance JsonDecode WDJson CreateWindow
-
 data NewWindow = NewWindow
   { _newWindowHandle :: WindowHandle
   , _newWindowType   :: WindowType
@@ -273,7 +262,13 @@ data Input
 
 newtype KeySeq = KeySeq { unKeySeq :: [Input] } 
   deriving (Eq, Show)
-  deriving (Semigroup, Monoid) via [Input]
+
+instance Semigroup KeySeq where
+  (<>) a b = KeySeq (unKeySeq a <> unKeySeq b)
+
+instance Monoid KeySeq where
+  mempty = KeySeq []
+  mappend = (<>)
 
 newtype ElementSendKeys = ElementSendKeys
   { _elementSendKeysValue :: Text }

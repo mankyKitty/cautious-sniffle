@@ -68,6 +68,13 @@ instance JsonDecode WDJson Duration where mkDecoder = pure decodeDuration
 newtype Button = Button { _unButton :: Word8 }
   deriving (Eq, Show)
 
+-- | Convenience functions for the first four mouse buttons
+mouse1, mouse2, mouse3, mouse4 :: Button
+mouse1 = Button 1
+mouse2 = Button 2
+mouse3 = Button 3
+mouse4 = Button 4
+
 encodeButton :: Applicative f => E.Encoder f Button
 encodeButton = _unButton >$< E.integral
 
