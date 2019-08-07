@@ -36,6 +36,12 @@ matrix:
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-2.4,ghc-8.4.4], sources: [hvr-ghc]}}
 
 before_install:
+  # We need selenium & geckodriver installed to be able to run the tests.
+  - sudo apt-get install -y selenium
+  - wget https://github.com/mozilla/geckodriver/releases/download/v0.24.0/geckodriver-v0.24.0-linux64.tar.gz
+  - tar xf geckodriver-v0.24.0-linux64.tar.gz
+  - sudo ln -s geckodriver /usr/local/bin/geckodriver
+  
   - HC=/opt/ghc/bin/${CC}
   - HCPKG=${HC/ghc/ghc-pkg}
   - unset CC

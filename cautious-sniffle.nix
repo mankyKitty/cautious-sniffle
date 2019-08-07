@@ -27,6 +27,7 @@ mkDerivation {
     servant-waargonaut tasty tasty-hedgehog tasty-hunit text time
     vector waargonaut warp
   ];
-  license = "unknown";
-  hydraPlatforms = stdenv.lib.platforms.none;
+  homepage = "https://github.com/mankyKitty/cautious-sniffle";
+  description = "Servant client bindings for W3C Webdriver Protocol";
+  license = stdenv.lib.licenses.bsd3;
 }

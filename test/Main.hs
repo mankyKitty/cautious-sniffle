@@ -34,7 +34,7 @@ import           Commands
 import           General.ManageDriver
 import           General.TestOpts                            (OverrideWDUrl)
 import           General.Types
-import           General.UnitTests
+import           General.UnitTests (unitTests, testExampleCode)
 
 managedSession  :: (IO (Env, Sess) -> TestTree) -> IO Env -> TestTree
 managedSession f ioenv = withResource initSession endSession f
@@ -69,6 +69,7 @@ main :: IO ()
 main = defaultMainWithIngredients myOptions . manageDriverAndServer $ \up down -> testGroup "Webdriver Tests"
   [ testGroup "State Machine" [stateMachineTests up down]
   , unitTests up down
+  , testExampleCode up down
   ]
   where
     myOptions =

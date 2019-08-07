@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeApplications  #-}
-module Main where
+module Example where
 
 import           Control.Monad                                           (unless,
                                                                           void)
@@ -33,7 +33,6 @@ import           Clay.Selector                                           (byId,
 import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
-
 
 baseUrl :: C.BaseUrl
 baseUrl = C.BaseUrl C.Http "localhost" 4444

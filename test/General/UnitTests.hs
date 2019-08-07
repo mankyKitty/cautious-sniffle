@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 module General.UnitTests where
 
+import Control.Exception (displayException)
 import Control.Applicative (liftA2)
 import           Control.Monad                      (void)
 
@@ -14,6 +15,7 @@ import qualified Data.Text                          as T
 
 import           Text.URI.QQ                        (uri)
 
+import qualified Servant.Client as C
 import           Servant.Client.Generic             (AsClientT)
 
 import           Protocol.Webdriver.ClientAPI       (WDCore (..))
@@ -24,6 +26,8 @@ import           Clay.Elements                      (input)
 import           Clay.Selector                      (byId, ( # ))
 
 import           General.Types
+
+import qualified Example
 
 nameInputId :: Text
 nameInputId = "input-name"
@@ -93,6 +97,12 @@ testPerformKeyActions iosess = testCaseSteps "Perform keyboard actions" $ \step 
   where
     tabKey ka = W.Action W.KeyAction (W.ActionId "keyboard") Nothing [ka W.tab]
 
+testExampleCode :: IO Env -> (Env -> IO ()) -> TestTree
+testExampleCode start stop = withResource start stop $ \ioenv -> testCase "Example Code Works" $
+  ioenv
+  >>= C.runClientM Example.webdriverExample . _envEnv
+  >>= either (assertFailure . displayException) pure
+
 unitTests :: IO Env -> (Env -> IO ()) -> TestTree
 unitTests start stop = withResource start stop $ \ioenv ->
   withResource (ioenv >>= openSession . _envWDCore) closeSession $ \iosess -> testGroup "Unit Tests"
@@ -122,11 +132,11 @@ unitTests start stop = withResource start stop $ \ioenv ->
     , testCaseSteps "Clear element" $ \step -> do
         let keys = "taco taco"
         elemClient <- step "findElement" *> fetchElemClient ioenv iosess
-        step "element is empty"      *> hasTextVal elemClient ""
+        step "element is empty"      *> hasTextVal elemClient mempty
         step "sendKeys"              *> W.elementSendKeys elemClient (W.ElementSendKeys keys)
         step "element has sent keys" *> hasTextVal elemClient keys
         step "clearElement"          *> W.elementClear elemClient
-        step "element is cleared"    *> hasTextVal elemClient ""
+        step "element is cleared"    *> hasTextVal elemClient mempty
 
     , testPrompt iosess
     , testPerformKeyActions iosess
@@ -138,8 +148,9 @@ unitTests start stop = withResource start stop $ \ioenv ->
     ]
   ]
   where
-    fetchElemClient ioenv iosess = ioenv >>= \env ->
-      iosess >>= fetchInputElement nameInputId env . _sessClient
+    fetchElemClient ioenv iosess =
+      liftA2 (,) ioenv (_sessClient <$> iosess)
+      >>= uncurry (fetchInputElement nameInputId)
 
     hasTextVal cli v =
       (W.getSuccessValue <$> W.getElementProperty cli "value") >>=
