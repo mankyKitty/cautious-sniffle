@@ -39,6 +39,7 @@ import           Data.Functor.Contravariant                     ((>$<))
 
 import           Data.Text                                      (Text)
 
+import           Data.Constraint.Extras.TH                      (deriveArgDict)
 import           Data.Dependent.Map                             (DMap)
 import           Data.Functor.Identity                          (Identity (..))
 import           Data.GADT.Compare.TH
@@ -121,8 +122,7 @@ data FirefoxCap a where
 deriveGShow ''FirefoxCap
 deriveGEq ''FirefoxCap
 deriveGCompare ''FirefoxCap
-deriveEqTagIdentity ''FirefoxCap
-deriveShowTagIdentity ''FirefoxCap
+deriveArgDict ''FirefoxCap
 
 type FirefoxCaps = DMap FirefoxCap Identity
 

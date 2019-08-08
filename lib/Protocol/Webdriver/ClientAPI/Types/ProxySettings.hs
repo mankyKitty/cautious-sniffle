@@ -1,9 +1,11 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- | For describing proxy settings to the driver, for more complicated WebDriver testing environments.
 --
 -- Refer to the [spec](https://w3c.github.io/webdriver/#proxy) for more information.
@@ -20,6 +22,7 @@ import qualified Data.Dependent.Map                          as DM
 import           Data.Foldable                               (fold)
 import           Data.Functor.Identity                       (Identity (..))
 
+import           Data.Constraint.Extras.TH                   (deriveArgDict)
 import           Data.GADT.Compare.TH
 import           Data.GADT.Show.TH
 
@@ -112,8 +115,7 @@ deriving instance Show (ProxySetting a)
 deriveGShow ''ProxySetting
 deriveGEq ''ProxySetting
 deriveGCompare ''ProxySetting
-deriveEqTagIdentity ''ProxySetting
-deriveShowTagIdentity ''ProxySetting
+deriveArgDict ''ProxySetting
 
 type ProxySettings = DMap ProxySetting Identity
 

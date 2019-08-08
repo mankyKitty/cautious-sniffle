@@ -1,13 +1,15 @@
-{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- | Chrome/Chromium specific capabilities
 --
-module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome 
+module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome
   ( -- * Types
     ChromeCap (..)
   , ChromeCaps
@@ -21,7 +23,7 @@ module Protocol.Webdriver.ClientAPI.Types.Capabilities.Chrome
 
     -- * Helpers
   , chromeCapKeys
-  , chromeCapEnc 
+  , chromeCapEnc
 
     -- * Encoders/Decoders
   , decChromeMobileEmu
@@ -43,6 +45,7 @@ import qualified Data.Text                                        as T
 
 import           Data.Maybe                                       (fromMaybe)
 
+import           Data.Constraint.Extras.TH                        (deriveArgDict)
 import           Data.Dependent.Map                               (DMap)
 import           Data.Functor.Identity                            (Identity (..))
 import           Data.GADT.Compare.TH
@@ -174,8 +177,7 @@ deriving instance Ord a => Ord (ChromeCap a)
 deriveGShow ''ChromeCap
 deriveGEq ''ChromeCap
 deriveGCompare ''ChromeCap
-deriveEqTagIdentity ''ChromeCap
-deriveShowTagIdentity ''ChromeCap
+deriveArgDict ''ChromeCap
 
 chromeCapKeys :: ChromeCap a -> Text
 chromeCapKeys ChrArgs             = "args"

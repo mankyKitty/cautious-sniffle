@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -5,12 +6,13 @@
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- | The capabilities of a WebDriver session define the browser(s)
 -- that are acceptable, as well as any specific configuration items for
 -- the individual browsers when chosen, or the session as a whole.
--- 
-module Protocol.Webdriver.ClientAPI.Types.Capabilities 
-  ( 
+--
+module Protocol.Webdriver.ClientAPI.Types.Capabilities
+  (
     -- * Types
     Browser (..)
   , Platform (..)
@@ -24,7 +26,7 @@ module Protocol.Webdriver.ClientAPI.Types.Capabilities
   , encPromptHandling, decPromptHandling
   , encPlatform, decPlatform
   , encCapabilities, decCapabilities
-  , encBrowser, decBrowser 
+  , encBrowser, decBrowser
   , encPageLoad, decPageLoad
   , capabilityKeyText
   , encodeAtKey
@@ -42,7 +44,8 @@ module Protocol.Webdriver.ClientAPI.Types.Capabilities
 
 import           Control.Lens                                            (cons,
                                                                           (^.))
-import           Data.Dependent.Map                                      
+import           Data.Constraint.Extras.TH                               (deriveArgDict)
+import           Data.Dependent.Map
 import           Data.Dependent.Map.Lens                                 (dmat)
 import           Data.Dependent.Sum                                      ((==>))
 import           Data.Functor.Alt                                        ((<!>))
@@ -194,8 +197,7 @@ deriving instance Show a => Show (Capability a)
 deriveGShow ''Capability
 deriveGEq ''Capability
 deriveGCompare ''Capability
-deriveEqTagIdentity ''Capability
-deriveShowTagIdentity ''Capability
+deriveArgDict ''Capability
 
 type Capabilities = DMap Capability Identity
 

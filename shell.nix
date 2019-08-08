@@ -4,9 +4,9 @@ let
   sources = {
     waargonaut             = import ./nix/waargonaut.nix;
     servant-waargonaut     = import ./nix/servant-waargonaut.nix;
+
     dependent-map          = import ./nix/dependent-map.nix;
     dependent-sum          = import ./nix/dependent-sum.nix;
-    dependent-sum-template = import ./nix/dependent-sum-template.nix;
   };
 
   waarg-overlay         = import "${sources.waargonaut}/waargonaut-deps.nix";
@@ -30,8 +30,12 @@ let
         clay = super.haskell.lib.dontCheck hsuper.clay;
         text-utf8 = super.haskell.lib.dontCheck hsuper.text-utf8;
 
-        dependent-sum-template = hsuper.callCabal2nix "dependent-sum-template" sources.dependent-sum-template {};
-        dependent-sum       = hsuper.callCabal2nix "dependent-sum" sources.dependent-sum {};
+        dependent-sum-template = hsuper.callCabal2nix "dependent-sum-template"
+          "${sources.dependent-sum}/dependent-sum-template" {};
+
+        dependent-sum       = hsuper.callCabal2nix "dependent-sum"
+          "${sources.dependent-sum}/dependent-sum" {};
+
         dependent-map       = hsuper.callCabal2nix "dependent-map" sources.dependent-map {};
         waargonaut         = hsuper.callCabal2nix "waargonaut" sources.waargonaut {};
         servant-waargonaut = hsuper.callCabal2nix "servant-waargonaut" sources.servant-waargonaut {};
