@@ -15,6 +15,7 @@ let
     gconf = super.gnome2.GConf;
     chromedriver = super.callPackage ./nix/selenium-server/chromedriver {};
     selenium-server-standalone = super.callPackage ./nix/selenium-server {};
+
     haskellPackages = super.haskellPackages.override (old: {
       overrides = self.lib.composeExtensions (old.overrides or (_: _: {})) (hself: hsuper: {
         ghc = hsuper.ghc // { withPackages = hsuper.ghc.withHoogle; };
@@ -39,7 +40,6 @@ let
         dependent-map       = hsuper.callCabal2nix "dependent-map" sources.dependent-map {};
         waargonaut         = hsuper.callCabal2nix "waargonaut" sources.waargonaut {};
         servant-waargonaut = hsuper.callCabal2nix "servant-waargonaut" sources.servant-waargonaut {};
-
       });
     });
   };
