@@ -34,7 +34,8 @@ import           Commands
 import           General.ManageDriver
 import           General.TestOpts                            (OverrideWDUrl)
 import           General.Types
-import           General.UnitTests (unitTests, testExampleCode)
+import           General.UnitTests                           (testExampleCode,
+                                                              unitTests)
 
 managedSession  :: (IO (Env, Sess) -> TestTree) -> IO Env -> TestTree
 managedSession f ioenv = withResource initSession endSession f
