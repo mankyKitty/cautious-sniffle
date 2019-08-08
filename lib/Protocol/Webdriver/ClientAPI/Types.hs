@@ -36,6 +36,7 @@ module Protocol.Webdriver.ClientAPI.Types
   , encFrameId, decFrameId
   , encWindowType, decWindowType
   , encWindowHandle, decWindowHandle     
+  , encSendAlertText
   , printWindowHandle
   , checkWindowHandlePattern
 
@@ -325,7 +326,8 @@ newtype SendAlertText = SendAlertText
   deriving (Show, Eq)
 deriveGeneric ''SendAlertText
 
+encSendAlertText :: Applicative f => E.Encoder f SendAlertText
+encSendAlertText = singleValueObj "text" (_unSendAlertText >$< E.text)
+
 instance JsonEncode WDJson SendAlertText where
-  mkEncoder = gEncoder $ trimWaargOpts "_unSendAlert"
-instance JsonDecode WDJson SendAlertText where
-  mkDecoder = gDecoder $ trimWaargOpts "_unSendAlert"
+  mkEncoder = pure encSendAlertText
