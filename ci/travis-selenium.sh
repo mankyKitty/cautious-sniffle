@@ -20,5 +20,5 @@ fi
 echo "wget'ing selenium-standalone-server-$S_VER_FULL"
 wget "http://selenium-release.storage.googleapis.com/$S_VER/selenium-server-standalone-$S_VER_FULL.jar" -P "$S_JAR_PATH/"
 
-echo "apt-get'ing openjdk-7-jre-headless"
-sudo apt-get install -y openjdk-7-jre-headless 
+echo "apt-get'ing openjdk-8-jre"
+sudo apt-get install -y openjdk-8-jre
