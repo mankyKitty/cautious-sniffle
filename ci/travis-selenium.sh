@@ -13,7 +13,7 @@ fi
 
 if [ ! -f "$S_SCRIPT" ];
 then
-  echo "java -jar $S_JAR_PATH/selenium-standalone-server-$S_VER_FULL.jar" > "$S_SCRIPT"
+  echo "java -jar $S_JAR_PATH/selenium-server-standalone-$S_VER_FULL.jar" > "$S_SCRIPT"
   chmod +x "$S_SCRIPT"
 fi
 
