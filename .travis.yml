@@ -37,10 +37,10 @@ matrix:
 
 before_install:
   # Selenium standalone server Install/Setup
-  - sh ci/travis-selenium.sh
+  - sudo sh ci/travis-selenium.sh
 
   # Geckodriver Install/Setup
-  - sh ci/travis-geckodriver.sh
+  - sudo sh ci/travis-geckodriver.sh
   
   - HC=/opt/ghc/bin/${CC}
   - HCPKG=${HC/ghc/ghc-pkg}
