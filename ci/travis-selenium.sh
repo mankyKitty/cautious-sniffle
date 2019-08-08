@@ -4,7 +4,7 @@ S_VER="3.141"
 S_VER_FULL="${S_VER}.59"
 
 S_JAR_PATH="$HOME/selenium"
-S_SCRIPT="/usr/local/bin/selenium-server.sh"
+S_SCRIPT="/usr/local/bin/selenium-server"
 
 if [ ! -d "$S_JAR_PATH" ];
 then

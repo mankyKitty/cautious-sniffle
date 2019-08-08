@@ -32,7 +32,7 @@ decLogLevel = withString $ \s -> note ("LogLevel : " <> T.pack s)
   . readMaybe 
   $ C.toUpper <$> s
 
-data LogSettings = LogSettings
+newtype LogSettings = LogSettings
   { _logLevel :: LogLevel
   }
   deriving (Show, Eq)

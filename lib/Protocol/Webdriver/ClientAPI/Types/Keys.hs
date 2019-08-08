@@ -61,17 +61,17 @@ end = '\xe010'
 home :: Char 
 home = '\xe011'
 
-left_arrow :: Char 
-left_arrow = '\xe012'
+leftArrow :: Char 
+leftArrow = '\xe012'
 
-up_arrow :: Char 
-up_arrow = '\xe013'
+upArrow :: Char 
+upArrow = '\xe013'
 
-right_arrow :: Char 
-right_arrow = '\xe014'
+rightArrow :: Char 
+rightArrow = '\xe014'
 
-downarrow :: Char 
-downarrow = '\xe015'
+downArrow :: Char 
+downArrow = '\xe015'
 
 insert :: Char 
 insert = '\xe016'

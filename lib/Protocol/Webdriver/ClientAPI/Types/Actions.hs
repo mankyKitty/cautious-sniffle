@@ -1,6 +1,4 @@
 {-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE DerivingVia           #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -98,8 +96,8 @@ encodePointerOrigin = E.encodeA $ \case
 
 decodePointerOrigin :: Monad f => D.Decoder f PointerOrigin
 decodePointerOrigin =
-  (textMatch "PointerOrigin" "viewport" Viewport) <!>
-  (textMatch "PointerOrigin" "pointer" Pointer) <!>
+  textMatch "PointerOrigin" "viewport" Viewport <!>
+  textMatch "PointerOrigin" "pointer" Pointer <!>
   (Elem <$> decElementId)
 
 instance JsonEncode WDJson PointerOrigin where mkEncoder = pure encodePointerOrigin

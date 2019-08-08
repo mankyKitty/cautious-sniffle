@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -39,5 +38,4 @@ instance (MimeRender ct (), HasClient m api) => HasClient m (HollowBody (ct ': c
       ctProxy = Proxy :: Proxy ct
       req0 = setRequestBodyLBS (mimeRender ctProxy ()) (contentType ctProxy) req
 
-  hoistClientMonad pm _ f cl =
-    hoistClientMonad pm (Proxy :: Proxy api) f cl
+  hoistClientMonad pm _ = hoistClientMonad pm (Proxy :: Proxy api)

@@ -1,10 +1,9 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE DeriveGeneric          #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE TemplateHaskell        #-}
 {-# LANGUAGE TypeApplications       #-}
 {-# LANGUAGE TypeFamilies           #-}
@@ -15,7 +14,7 @@ module Protocol.Webdriver.ClientAPI
   ( -- * Types
     WebDriverAPI (..)
   , WDCore (..)
-  , HasWDCore (..) 
+  , HasWDCore (..)
 
     -- * APIs
   , apiProxy
@@ -37,8 +36,8 @@ module Protocol.Webdriver.ClientAPI
 
 import           Control.Lens                            (makeClassy)
 
-import Control.Monad.Except (ExceptT (..))
-import Data.Functor.Compose (Compose (..))
+import           Control.Monad.Except                    (ExceptT (..))
+import           Data.Functor.Compose                    (Compose (..))
 
 import qualified GHC.Generics                            as GHC
 
@@ -58,7 +57,8 @@ import           Waargonaut.Types.Json                   (Json)
 import           Protocol.Webdriver.ClientAPI.SessionAPI
 
 import           Servant.API.Generic
-import           Servant.Client.Generic                  (AsClientT, genericClientHoist)
+import           Servant.Client.Generic                  (AsClientT,
+                                                          genericClientHoist)
 
 -- | The root API record for interacting with the Webdriver.
 data WebDriverAPI route = WebDriverAPI

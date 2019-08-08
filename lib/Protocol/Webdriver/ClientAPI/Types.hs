@@ -126,7 +126,7 @@ checkWindowHandlePattern pfx inp =
     T.isPrefixOf pfx inp && pattOk (T.drop pfxLen inp)
 
 decWindowHandle :: Monad f => D.Decoder f WindowHandle
-decWindowHandle = numericId <!> (withText $ \s ->
+decWindowHandle = numericId <!> withText (\s ->
     if checkWindowHandlePattern "window-" s then pure (WebWindowId s)
     else if checkWindowHandlePattern "frame-" s then pure (WebFrameId s)
     else Left s
@@ -320,7 +320,7 @@ instance JsonEncode WDJson ExecuteAsyncScript where
 instance JsonDecode WDJson ExecuteAsyncScript where
   mkDecoder = gDecoder $ trimWaargOpts "_executeAsyncScript"
 
-data SendAlertText = SendAlertText
+newtype SendAlertText = SendAlertText
   { _unSendAlertText :: Text }
   deriving (Show, Eq)
 deriveGeneric ''SendAlertText
