@@ -3,50 +3,39 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 module Main (main) where
 
-import           Data.Proxy                                  (Proxy (..))
+import           Data.Proxy                   (Proxy (..))
 
-import           Test.Tasty                                  (TestTree,
-                                                              defaultIngredients,
-                                                              defaultMainWithIngredients,
-                                                              includingOptions,
-                                                              testGroup,
-                                                              withResource)
-import           Test.Tasty.Hedgehog                         (testProperty)
-import           Test.Tasty.Options                          (OptionDescription (..))
+import           Test.Tasty                   (TestTree, defaultIngredients,
+                                               defaultMainWithIngredients,
+                                               includingOptions, testGroup,
+                                               withResource)
+import           Test.Tasty.Hedgehog          (testProperty)
+import           Test.Tasty.Options           (OptionDescription (..))
 
-import           Hedgehog                                    (evalIO,
-                                                              executeSequential,
-                                                              forAll, property,
-                                                              withTests)
+import           Hedgehog                     (evalIO, executeSequential,
+                                               forAll, property, withTests)
 
-import qualified Hedgehog.Gen                                as Gen
-import qualified Hedgehog.Range                              as Range
+import qualified Hedgehog.Gen                 as Gen
+import qualified Hedgehog.Range               as Range
 
-import           Protocol.Webdriver.ClientAPI                (WDCore (..))
 
-import qualified Protocol.Webdriver.ClientAPI                as W
-import qualified Protocol.Webdriver.ClientAPI.Types.Internal as W
-import qualified Protocol.Webdriver.ClientAPI.Types.Session  as W
+import qualified Protocol.Webdriver.ClientAPI as W
 
 import           Commands
 import           General.ManageDriver
-import           General.TestOpts                            (OverrideWDUrl)
+import           General.TestOpts             (OverrideWDUrl)
 import           General.Types
-import           General.UnitTests                           (testExampleCode,
-                                                              unitTests)
+import           General.UnitTests            (closeSession, openSession,
+                                               testExampleCode, unitTests)
 
 managedSession  :: (IO (Env, Sess) -> TestTree) -> IO Env -> TestTree
-managedSession f ioenv = withResource initSession endSession f
-  where
-    endSession (_, Sess _ sCli) =
-      W.getSuccessValue <$> W.deleteSession sCli
-
-    initSession = do
-      env <- ioenv
-      s <- W.getSuccessValue <$> W.newSession (_core . _envWDCore $ env) firefoxSession
-      pure (env, Sess (W._sessionId s) (_mkSession (_envWDCore env) (W._sessionId s)))
+managedSession f ioenv = withResource
+  (ioenv >>= \env -> (env,) <$> openSession (_envWDCore env))
+  (closeSession . snd)
+  f
 
 stateMachineTests :: IO Env -> (Env -> IO ()) -> TestTree
 stateMachineTests start stop = withResource start stop (managedSession smt)
@@ -70,7 +59,7 @@ main :: IO ()
 main = defaultMainWithIngredients myOptions . manageDriverAndServer $ \up down -> testGroup "Webdriver Tests"
   [ testGroup "State Machine" [stateMachineTests up down]
   , unitTests up down
-  -- , testExampleCode up down
+  , testExampleCode up down
   ]
   where
     myOptions =
