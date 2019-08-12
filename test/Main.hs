@@ -70,7 +70,7 @@ main :: IO ()
 main = defaultMainWithIngredients myOptions . manageDriverAndServer $ \up down -> testGroup "Webdriver Tests"
   [ testGroup "State Machine" [stateMachineTests up down]
   , unitTests up down
-  , testExampleCode up down
+  -- , testExampleCode up down
   ]
   where
     myOptions =
