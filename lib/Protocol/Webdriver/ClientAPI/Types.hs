@@ -26,16 +26,16 @@ module Protocol.Webdriver.ClientAPI.Types
   , SwitchToWindow (..)
   , WDRect (..)
   , SwitchToFrame (..)
-  , PropertyVal (..)  
-  , FrameId (..)      
-  , WindowType (..)   
-  , WindowHandle (..) 
+  , PropertyVal (..)
+  , FrameId (..)
+  , WindowType (..)
+  , WindowHandle (..)
 
     -- * Helpers
   , encodePropertyVal, decodePropertyVal
   , encFrameId, decFrameId
   , encWindowType, decWindowType
-  , encWindowHandle, decWindowHandle     
+  , encWindowHandle, decWindowHandle
   , encSendAlertText
   , printWindowHandle
   , checkWindowHandlePattern
@@ -67,7 +67,7 @@ import qualified Data.Scientific                                     as Sci
 
 import           Data.Text                                           (Text)
 import qualified Data.Text                                           as T
-import qualified Data.Text.Encoding                                as TE
+import qualified Data.Text.Encoding                                  as TE
 import           Data.Vector                                         (Vector)
 import qualified Data.Vector                                         as V
 
@@ -87,6 +87,7 @@ import qualified Waargonaut.Types.JString                            as J
 
 import           Generics.SOP.TH                                     (deriveGeneric)
 
+import           Protocol.Webdriver.ClientAPI.Types.Actions
 import           Protocol.Webdriver.ClientAPI.Types.Cookies
 import           Protocol.Webdriver.ClientAPI.Types.ElementId
 import           Protocol.Webdriver.ClientAPI.Types.Error
@@ -98,7 +99,6 @@ import           Protocol.Webdriver.ClientAPI.Types.ProxySettings
 import           Protocol.Webdriver.ClientAPI.Types.Session
 import           Protocol.Webdriver.ClientAPI.Types.Timeout
 import           Protocol.Webdriver.ClientAPI.Types.WDUri
-import  Protocol.Webdriver.ClientAPI.Types.Actions
 
 -- | Each browsing context has an associated window handle which uniquely identifies
 -- it. This must be a String and must not be "current".
@@ -163,8 +163,8 @@ data PropertyVal
 deriveGeneric ''PropertyVal
 
 decodePropertyVal :: Monad f => D.Decoder f PropertyVal
-decodePropertyVal = 
-  (Numeric <$> D.scientific) <!> 
+decodePropertyVal =
+  (Numeric <$> D.scientific) <!>
   (Boolean <$> D.bool) <!>
   (Textual . TE.decodeUtf8 <$> D.strictByteString)
 
@@ -174,14 +174,14 @@ decodePropertyVal =
   -- an empty string.
 
 encodePropertyVal :: Applicative f => E.Encoder f PropertyVal
-encodePropertyVal = E.encodeA $ \case 
+encodePropertyVal = E.encodeA $ \case
   Numeric s -> E.runEncoder E.scientific s
   Boolean b -> E.runEncoder E.bool b
   Textual x -> E.runEncoder E.text x
   -- OtherVal j -> E.runEncoder E.json j
 
-instance JsonEncode WDJson PropertyVal where mkEncoder = pure encodePropertyVal 
-instance JsonDecode WDJson PropertyVal where mkDecoder = pure decodePropertyVal 
+instance JsonEncode WDJson PropertyVal where mkEncoder = pure encodePropertyVal
+instance JsonDecode WDJson PropertyVal where mkDecoder = pure decodePropertyVal
 
 data WindowType
   = Window
@@ -238,9 +238,9 @@ encFrameId = E.encodeA $ \case
   FrameElement e -> E.runEncoder encElementId e
 
 decFrameId :: Monad f => D.Decoder f FrameId
-decFrameId = 
-  (NullFrame <$ D.null) <!> 
-  (Number <$> D.integral) <!> 
+decFrameId =
+  (NullFrame <$ D.null) <!>
+  (Number <$> D.integral) <!>
   (FrameElement <$> decElementId)
 
 instance JsonEncode WDJson FrameId where mkEncoder = pure encFrameId
@@ -261,7 +261,7 @@ data Input
   | Input Text
   deriving (Eq, Show)
 
-newtype KeySeq = KeySeq { unKeySeq :: [Input] } 
+newtype KeySeq = KeySeq { unKeySeq :: [Input] }
   deriving (Eq, Show)
 
 instance Semigroup KeySeq where
@@ -289,7 +289,7 @@ instance JsonEncode WDJson ElementSendKeys where
 
 newtype TakeElementScreenshot = TakeElementScreenshot
   { -- | Indicate if you would like the element scrolled into view.
-    _takeElementScreenshotScroll :: Maybe Bool 
+    _takeElementScreenshotScroll :: Maybe Bool
   }
   deriving (Show, Eq)
 deriveGeneric ''TakeElementScreenshot

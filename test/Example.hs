@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Example where
 
 import           Control.Monad                                           (unless,
@@ -30,7 +31,7 @@ import qualified Servant.Client                                          as C
 import qualified Clay.Elements                                           as Clay
 import           Clay.Selector                                           (byId,
                                                                           ( # ))
-import qualified Text.URI                                                as URI
+-- import qualified Text.URI                                                as URI
 import qualified Waargonaut.Encode                                       as E
 import qualified Waargonaut.Generic                                      as G
 
@@ -74,12 +75,9 @@ webdriverExample = do
   let sessClient = WD._mkSession core (WD._sessionId newSess)
   -- NB: This is the only time we'll need to explicity handle the session Id.
 
-  -- We use the 'modern-uri' package to handle the creation of correct URLs
-  -- This can also be created inline using quasiquotes: [uri|http://foo.com.au|]
-  url <- URI.mkURI "http://uitestingplayground.com/textinput"
-
   -- Tell the driver to load the page
-  WD.navigateTo sessClient (WD.WDUri url)
+  WD.navigateTo sessClient (WD.WDUri [WD.uri|http://uitestingplayground.com/textinput|])
+  -- Internally, this package uses the 'modern-uri' package to handle the creation of correct URLs
 
   -- Some helper functions
   let

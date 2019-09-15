@@ -1,7 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 -- | Wrapper of the 'URI' type from the [modern-uri](https://hackage.haskell.org/package/modern-uri) package.
-module Protocol.Webdriver.ClientAPI.Types.WDUri where
+module Protocol.Webdriver.ClientAPI.Types.WDUri
+  ( WDUri (..)
+  , encURI
+  , decURI
+  , module Text.URI
+  , module Text.URI.QQ
+  ) where
 
 import           Control.Exception                           (displayException,
                                                               fromException)
@@ -11,8 +17,8 @@ import           Data.Functor.Contravariant                  ((>$<))
 
 import qualified Data.Text                                   as T
 
-import           Text.URI                                    (URI)
-import qualified Text.URI                                    as URI
+import           Text.URI                                    
+import           Text.URI.QQ                                  
 
 import qualified Waargonaut.Decode                           as D
 import qualified Waargonaut.Encode                           as E
@@ -28,14 +34,14 @@ newtype WDUri = WDUri
   deriving (Show, Eq)
 
 encURI :: Applicative f => E.Encoder f WDUri
-encURI = singleValueObj "url" (URI.render . _unWDUri >$< E.text)
+encURI = singleValueObj "url" (render . _unWDUri >$< E.text)
 
 decURI :: Monad f => D.Decoder f WDUri
-decURI = withText (bimap (T.pack . errText . fromException) WDUri . URI.mkURI)
+decURI = withText (bimap (T.pack . errText . fromException) WDUri . mkURI)
   where
     errText = maybe
       "WDUri : Unknown Error parsing URI"
-      (\(URI.ParseException t) -> displayException t)
+      (\(ParseException t) -> displayException t)
 
 instance JsonDecode WDJson WDUri where mkDecoder = pure decURI
 instance JsonEncode WDJson WDUri where mkEncoder = pure encURI
