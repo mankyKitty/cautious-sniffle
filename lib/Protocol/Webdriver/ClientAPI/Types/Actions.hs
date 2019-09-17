@@ -9,16 +9,18 @@
 --
 module Protocol.Webdriver.ClientAPI.Types.Actions where
 
-import           Control.Lens                                 ((^.))
+import           Control.Lens                                 (( # ), (^.))
+import           Control.Monad.Except                         (throwError)
 
 import           Data.Functor.Alt                             ((<!>))
 import           Data.Functor.Contravariant                   ((>$<))
 import           Data.Text                                    (Text)
 import           Generics.SOP.TH                              (deriveGeneric)
 import           GHC.Word                                     (Word8)
-import           Linear.V2                                    (V2, _x, _y)
+import           Linear.V2                                    (V2 (..), _x, _y)
 
 import qualified Waargonaut.Decode                            as D
+import qualified Waargonaut.Decode.Error                      as D
 import qualified Waargonaut.Encode                            as E
 import           Waargonaut.Generic                           (JsonDecode (..),
                                                                JsonEncode (..))
@@ -174,6 +176,26 @@ encodeActionObject = E.mapLikeObj $ \case
 
 instance JsonEncode WDJson ActionObject where mkEncoder = pure encodeActionObject
 
+decodeActionObject :: Monad f => D.Decoder f ActionObject
+decodeActionObject = D.withCursor $ \c -> D.fromKey "type" D.text c >>= \case
+  "pause" -> Pause <$> duration c
+  "pointerUp" -> PointerUp <$> button c
+  "pointerDown" -> PointerDown <$> button c
+  "pointerMove" -> PointerMove <$> duration c <*> D.fromKey "origin" decodePointerOrigin c <*> xy c
+  "keyUp" -> KeyUp <$> key c
+  "keyDown" -> KeyDown <$> key c
+  t -> throwError (D._ConversionFailure # ("Unknown action object type: " <> t))
+  where
+    key = D.fromKey "value" D.unboundedChar
+    button = D.fromKey "button" decodeButton
+    duration = D.fromKey "duration" decodeDuration
+
+    xy c0 = V2
+      <$> D.fromKey "x" D.int c0
+      <*> D.fromKey "y" D.int c0
+
+instance JsonDecode WDJson ActionObject where mkDecoder = pure decodeActionObject
+
 -- | The action in it's entirety, which is made of up smaller individual 'ActionObject's
 data Action = Action
   { _actionType       :: ActionType
@@ -192,6 +214,15 @@ encodeAction = E.mapLikeObj $ \a ->
 
 instance JsonEncode WDJson Action where mkEncoder = pure encodeAction
 
+decodeAction :: Monad f => D.Decoder f Action
+decodeAction = Action
+  <$> D.atKey "type" decodeActionType
+  <*> D.atKey "id" decodeActionId
+  <*> D.atKeyOptional "parameters" decodePointerType
+  <*> D.atKey "actions" (D.list decodeActionObject)
+
+instance JsonDecode WDJson Action where mkDecoder = pure decodeAction
+
 newtype PerformActions = PerformActions
   { _unPerformActions :: [Action] }
   deriving (Show, Eq)
@@ -199,3 +230,6 @@ deriveGeneric ''PerformActions
 
 instance JsonEncode WDJson PerformActions where
   mkEncoder = pure (_unPerformActions >$< singleValueObj "actions" (E.list encodeAction))
+
+instance JsonDecode WDJson PerformActions where
+  mkDecoder = pure (PerformActions <$> D.atKey "actions" (D.list decodeAction))
