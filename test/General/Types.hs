@@ -24,7 +24,6 @@ import           System.Process                                          (Proces
 
 import           Control.Lens.TH                                         (makeClassy)
 import           Data.Function                                           ((&))
-import           Data.Kind                                               (Type)
 import           Data.Text                                               (Text)
 
 import           Servant.Client                                          (ClientEnv,
@@ -32,9 +31,7 @@ import           Servant.Client                                          (Client
                                                                           ClientError)
 import           Servant.Client.Generic                                  (AsClientT)
 
-import           Hedgehog                                                (MonadTest,
-                                                                          Opaque,
-                                                                          Var)
+import           Hedgehog                                                (MonadTest)
 
 import           Protocol.Webdriver.ClientAPI                            (ElementAPI,
                                                                           SessionAPI,
@@ -71,15 +68,15 @@ chromeSession = NewSession
   Nothing                       -- username
   Nothing                       -- password
 
-data Model (v :: Type -> Type) = Model
+data Model = Model
   { _modelAtUrl       :: Bool
-  , _modelElementApi  :: Maybe (Var (Opaque (ElementAPI (AsClientT IO))) v)
+  , _modelElementApi  :: Maybe (ElementAPI (AsClientT IO))
   , _modelKeysSent    :: Maybe Text
   , _modelKeysChecked :: Bool
   }
 makeClassy ''Model
 
-initialModel :: Model v
+initialModel :: Model
 initialModel = Model False Nothing Nothing False
 
 data WDRun m = WDRun

@@ -108,6 +108,7 @@ test-suite wd-tests
                      , scotty >= 0.10 && < 0.13
                      , process >= 1.6 && < 1.8
                      , exceptions >= 0.10
+                     , transformers
 
   other-modules:       General.Types
                      , General.ManageDriver
