@@ -1,0 +1,158 @@
+{
+    "clay": {
+        "branch": "master",
+        "description": "A CSS preprocessor as embedded Haskell.",
+        "homepage": "",
+        "owner": "sebastiaanvisser",
+        "repo": "clay",
+        "rev": "3808e460c044809f088ac8952ed3720cf801daf3",
+        "sha256": "1jdl4422wp61gxclsz6k5gy0l80q9dachz6vmhfqpzarcrki8viw",
+        "type": "tarball",
+        "url": "https://github.com/sebastiaanvisser/clay/archive/3808e460c044809f088ac8952ed3720cf801daf3.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "constraints-extras": {
+        "branch": "develop",
+        "description": "Convenience functions and template haskell for working with constraints",
+        "homepage": "http://hackage.haskell.org/package/constraints-extras",
+        "owner": "obsidiansystems",
+        "repo": "constraints-extras",
+        "rev": "53bd3f79b60e71b08bf0b2f4995dc0b37e053172",
+        "sha256": "04kqs84nn6r89m21ckf3wmd6r2frhy6lxqhjbdxkn3bb13cnrvzn",
+        "type": "tarball",
+        "url": "https://github.com/obsidiansystems/constraints-extras/archive/53bd3f79b60e71b08bf0b2f4995dc0b37e053172.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "dependent-map": {
+        "ref": "master",
+        "repo": "https://github.com/mokus0/dependent-map",
+        "rev": "06ffb98cf03ac758fbacf0c43aa9690a65a53b2d",
+        "type": "git"
+    },
+    "dependent-sum": {
+        "ref": "master",
+        "repo": "https://github.com/mokus0/dependent-sum",
+        "rev": "5ab6d81b844c2816f75ad3fb2e611d9b54130bce",
+        "type": "git"
+    },
+    "generic-lens": {
+        "branch": "master",
+        "description": "Generically derive traversals, lenses, and prisms.",
+        "homepage": "",
+        "owner": "kcsongor",
+        "repo": "generic-lens",
+        "rev": "e4f6890b3fc44733e871741eeffb1567cd609612",
+        "sha256": "05q0niy9xfcgjy882yzjd55rymvg95kdq3dxsrllhj4d5bi5jwfj",
+        "type": "tarball",
+        "url": "https://github.com/kcsongor/generic-lens/archive/e4f6890b3fc44733e871741eeffb1567cd609612.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-balancedparens": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-balancedparens",
+        "rev": "022c89bed98406b6d060bf6474362ddeff791210",
+        "sha256": "13nzbc1d9b6bgy4bzkfzi8rjv9sq1qfmc3wiisyswlydcawmhng1",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-balancedparens/archive/022c89bed98406b6d060bf6474362ddeff791210.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-bits": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-bits",
+        "rev": "08c6224986aaafd4b54278b69ef64de718aa382d",
+        "sha256": "0zbmigzzvxpbpw14331dalhywd4kb9hgcahdig8psbhm8cvpbqq7",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-bits/archive/08c6224986aaafd4b54278b69ef64de718aa382d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-excess": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-excess",
+        "rev": "a27176f20955a920ceeb1f389d4e0ebe7151160a",
+        "sha256": "09pg0v97zzcc7f36cafnrzrgwm3md93dq285h3a1iyzm0zrcmlhc",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-excess/archive/a27176f20955a920ceeb1f389d4e0ebe7151160a.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-json": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-json",
+        "rev": "f07478334028cd44cfd8405017a062ca4593b250",
+        "sha256": "09dm4dw4r70npqygn48fkj5l3n9d5d2ab52sqd1aaf36hll7fch5",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-json/archive/f07478334028cd44cfd8405017a062ca4593b250.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-json-standard-cursor": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-json-standard-cursor",
+        "rev": "b30429489e7fcc8685beffbbd8df9f95a4750bd1",
+        "sha256": "1aq1b7ljl2yacijvhwzwii7ysqkx55wza4nkax0l4igib1fr9wnc",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-json-standard-cursor/archive/b30429489e7fcc8685beffbbd8df9f95a4750bd1.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-rankselect": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-rankselect",
+        "rev": "05b96e52300c639ce3d3dff792cfdb1f25a4b972",
+        "sha256": "0nsn9fl7ywwxb07ixllx0c367x339f3sdd6ppfx9ypp033zv2xly",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-rankselect/archive/05b96e52300c639ce3d3dff792cfdb1f25a4b972.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "hw-rankselect-base": {
+        "branch": "master",
+        "description": null,
+        "homepage": null,
+        "owner": "haskell-works",
+        "repo": "hw-rankselect-base",
+        "rev": "d749ea1496e7b38ee5ea2683aa771329a2402a7b",
+        "sha256": "1sqbsydasvwkgqmmjqghkvgww57i52wf98pl4yxhirsvjh3dv28a",
+        "type": "tarball",
+        "url": "https://github.com/haskell-works/hw-rankselect-base/archive/d749ea1496e7b38ee5ea2683aa771329a2402a7b.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "niv": {
+        "branch": "master",
+        "description": "Easy dependency management for Nix projects",
+        "homepage": "https://github.com/nmattia/niv",
+        "owner": "nmattia",
+        "repo": "niv",
+        "rev": "2ecfd86b631714b457e56d70dd83fa60435baeb6",
+        "sha256": "01j6727cws8blg1npp54b4w6xa0gpgyzhyws2vqgp8clnlnmqqhi",
+        "type": "tarball",
+        "url": "https://github.com/nmattia/niv/archive/2ecfd86b631714b457e56d70dd83fa60435baeb6.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs": {
+        "branch": "nixos-19.09",
+        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
+        "homepage": "https://github.com/NixOS/nixpkgs",
+        "owner": "NixOS",
+        "repo": "nixpkgs-channels",
+        "rev": "8731aaaf8b30888bc24994096db830993090d7c4",
+        "sha256": "1hcc89rxi47nb0mpk05nl9rbbb04kfw97xfydhpmmgh57yrp3zqa",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/8731aaaf8b30888bc24994096db830993090d7c4.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
