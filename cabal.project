@@ -1,19 +1,2 @@
 packages:
   *.cabal
-
-source-repository-package
-  type: git
-  location: https://github.com/mokus0/dependent-sum
-  tag: af9ec35db0a316ded9a198f481a93ba2e078dad5
-  subdir: dependent-sum
-
-source-repository-package
-  type: git
-  location: https://github.com/mokus0/dependent-map.git
-  tag: f6e7a2bdb1acfb0efe094988703822b8e595c8cd
-
-source-repository-package
-  type: git
-  location: https://github.com/mokus0/dependent-sum.git
-  tag: af9ec35db0a316ded9a198f481a93ba2e078dad5
-  subdir: dependent-sum-template

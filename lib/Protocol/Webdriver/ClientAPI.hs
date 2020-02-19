@@ -191,10 +191,10 @@ mkWDCoreHoistedClient h =
     (fromServant . withWindow)
     (\sess -> fromServant . withElement sess)
 
--- | Lift the 'ClientM' to 'Compose IO (Either C.ServantError)'.
-mkWDCoreComposeTClient :: C.ClientEnv -> WDCore (Compose IO (Either C.ServantError))
+-- | Lift the 'ClientM' to 'Compose IO (Either C.ClientError)'.
+mkWDCoreComposeTClient :: C.ClientEnv -> WDCore (Compose IO (Either C.ClientError))
 mkWDCoreComposeTClient env = mkWDCoreHoistedClient (Compose . flip C.runClientM env)
 
--- | Lifts the 'ClientM' to 'ExceptT IO C.ServantError'
-mkWDCoreExceptTClient :: C.ClientEnv -> WDCore (ExceptT C.ServantError IO)
+-- | Lifts the 'ClientM' to 'ExceptT IO C.ClientError'
+mkWDCoreExceptTClient :: C.ClientEnv -> WDCore (ExceptT C.ClientError IO)
 mkWDCoreExceptTClient env = mkWDCoreHoistedClient (ExceptT . flip C.runClientM env)

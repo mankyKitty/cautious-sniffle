@@ -29,7 +29,7 @@ import           Data.Text                                               (Text)
 
 import           Servant.Client                                          (ClientEnv,
                                                                           ClientM,
-                                                                          ServantError)
+                                                                          ClientError)
 import           Servant.Client.Generic                                  (AsClientT)
 
 import           Hedgehog                                                (MonadTest,
@@ -84,7 +84,7 @@ initialModel = Model False Nothing Nothing False
 
 data WDRun m = WDRun
   { runOrFail :: forall a. (MonadTest m, MonadIO m) => ClientM a -> m a
-  , runWD :: forall a. (MonadTest m, MonadIO m) => ClientM a -> m (Either ServantError a)
+  , runWD :: forall a. (MonadTest m, MonadIO m) => ClientM a -> m (Either ClientError a)
   }
 
 data Threads = Threads

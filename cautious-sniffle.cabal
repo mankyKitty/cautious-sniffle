@@ -41,18 +41,18 @@ common base-deps
     bifunctors              >= 5.5.4 && < 5.6,
     containers              >= 0.5 && < 0.7,
     linear                  >= 1.20.9 && < 1.21,
-    clay                    >= 0.13.1 && < 0.14,
+    clay                    >= 0.14 && < 0.15,
     mtl                     >= 2.2.2 && < 2.3,
     text                    >= 1.2.3 && < 1.3,
     contravariant           >= 1.5.2 && < 1.6,
-    dependent-map           >= 0.2.5 && < 0.4,
-    dependent-sum           >= 0.5 && < 0.7,
-    dependent-sum-template  >= 0.0.0.1 && < 0.2,
+    dependent-map,
+    dependent-sum,
+    dependent-sum-template,
     errors                  >= 2.3.0 && < 2.4,
     generics-sop            >= 0.4.0 && < 0.6,
     http-client             >= 0.5.14 && < 0.7,
     time                    >= 1.8.0 && < 1.10,
-    lens                    >= 4.17.1 && < 4.18,
+    lens                    >= 4.17.1 && < 4.20,
     semigroupoids           >= 5.3.2 && < 5.4,
     vector                  >= 0.12.0 && < 0.13,
     modern-uri              >= 0.3.0 && < 0.4,
@@ -61,9 +61,9 @@ common base-deps
     servant                 >= 0.15 && < 0.17,
     servant-client          >= 0.15 && < 0.17,
     servant-client-core     >= 0.15 && < 0.17,
-    servant-waargonaut      >= 0.6.0 && < 0.7,
-    waargonaut              >= 0.6 && < 0.8,
-    constraints-extras      >= 0.3.0 && < 0.4
+    servant-waargonaut      >= 0.7 && < 0.8,
+    waargonaut              >= 0.8 && < 0.9,
+    constraints-extras
 
 library
   import: base
