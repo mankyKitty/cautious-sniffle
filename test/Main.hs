@@ -37,9 +37,9 @@ managedSession f ioenv = withResource
 prop_textInput :: IO Env -> (Env -> IO ()) -> TestTree
 prop_textInput start stop = withResource start stop (managedSession smt)
   where
-    smt ctx = testProperty "Enter some text." . withTests 20 . property $ do
+    smt ctx = testProperty "Enter some text." . property $ do
       (env, sessApi) <- evalIO ctx
-      cmds <- forAll $ Gen.list (Range.linear 0 20) genCommand
+      cmds <- forAll $ Gen.list (Range.linear 10 50) genCommand
       evalCommands cmds env sessApi
 
 main :: IO ()

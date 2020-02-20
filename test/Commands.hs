@@ -8,7 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Commands where
 
-import           Control.Lens                       (use, (^.), (?=), (.=))
+import           Control.Lens                       (use, (^.), (?=), (.=), (%=))
 import           Control.Monad                      (void, unless, when)
 import           Control.Monad.IO.Class             (MonadIO)
 import Control.Monad.State (MonadState, evalStateT)
@@ -68,12 +68,13 @@ cSendKeys inputText = do
   -- Require
   mTargetEl <- use modelElementApi
   checkedKeys <- use modelKeysChecked
+
   case mTargetEl of
-    Just targetEl | not checkedKeys -> do
+    Just targetEl -> do
       -- Execute
       _ <- evalIO $ W.elementSendKeys targetEl (W.ElementSendKeys inputText)
       -- Update
-      modelKeysSent ?= inputText
+      modelKeysSent %= Just . maybe inputText (<> inputText)
       label "Send Keys"
     _ -> pure ()
 
@@ -117,7 +118,7 @@ cCheckSentKeys = do
       -- Ensure
       W.Textual inputText === val
       -- Update
-      modelKeysChecked.= True
+      modelKeysChecked .= True
       label "Check sent keys"
     _ -> pure ()
 
@@ -141,7 +142,7 @@ cFindElement env (Sess _ sCli) inpId = do
       e <- W.getSuccessValue <$> W.findElement sCli (W.ByCss (input # byId inpId))
       pure $ _mkElement (_envWDCore env) sCli e
     -- Update
-    modelElementApi ?= targetElem
+    modelElementApi .= Just targetElem
     label "Find element"
 
 cNavigateTo
@@ -174,14 +175,14 @@ evalCommands cmds env currentSession =
   flip evalStateT initialModel $ forM_ cmds $ \case
     NavigateTo u -> cNavigateTo currentSession u
     CheckSentKeys -> cCheckSentKeys
-    SendKeys inp -> cSendKeys inp 
+    SendKeys inp -> cSendKeys inp
     ClearKeys -> cClearKeys
     FindElement el -> cFindElement env currentSession el
 
 genCommand :: MonadGen m => m Command
 genCommand = Gen.choice
   [ pure ClearKeys
-  , pure $ NavigateTo testPage 
+  , pure $ NavigateTo testPage
   , pure CheckSentKeys
   , SendKeys <$> Gen.text (Range.linear 0 100) nonReservedInput
   , FindElement <$> Gen.element ["input-name", "input-occupation"]
