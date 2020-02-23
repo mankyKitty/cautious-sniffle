@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeApplications       #-}
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE OverloadedStrings      #-}
+
 -- | Contains the root WebDriverAPI, as well as helper structures like 'WDCore' to help
 -- with interacting with the rest of the API.
 module Protocol.Webdriver.ClientAPI
@@ -29,6 +31,7 @@ module Protocol.Webdriver.ClientAPI
   , mkWDCoreHoistedClient
   , mkWDCoreComposeTClient
   , mkWDCoreExceptTClient
+  , selectOption
 
     -- * Re-exports
   , module Protocol.Webdriver.ClientAPI.SessionAPI
@@ -36,11 +39,14 @@ module Protocol.Webdriver.ClientAPI
 
 import           Control.Lens                            (makeClassy)
 
+import           Control.Monad                           (when, void)
 import           Control.Monad.Except                    (ExceptT (..))
 import           Data.Functor.Compose                    (Compose (..))
 
 import qualified GHC.Generics                            as GHC
 
+import Data.Text (Text)
+import Data.Foldable (for_)
 import           Data.Proxy                              (Proxy (..))
 import           Protocol.Webdriver.ClientAPI.Types      (ElementId, NewSession,
                                                           Session, SessionId,
@@ -55,6 +61,7 @@ import qualified Servant.Client                          as C
 import           Waargonaut.Types.Json                   (Json)
 
 import           Protocol.Webdriver.ClientAPI.SessionAPI
+import qualified Protocol.Webdriver.ClientAPI.Types      as WDT
 
 import           Servant.API.Generic
 import           Servant.Client.Generic                  (AsClientT,
@@ -198,3 +205,19 @@ mkWDCoreComposeTClient env = mkWDCoreHoistedClient (Compose . flip C.runClientM 
 -- | Lifts the 'ClientM' to 'ExceptT IO C.ClientError'
 mkWDCoreExceptTClient :: C.ClientEnv -> WDCore (ExceptT C.ClientError IO)
 mkWDCoreExceptTClient env = mkWDCoreHoistedClient (ExceptT . flip C.runClientM env)
+
+-- | Select the given \<option\> from the expected to be \<select\> element.
+selectOption
+    :: Monad m
+    => WDCore m
+    -> SessionAPI (AsClientT m)
+    -> ElementAPI (AsClientT m)
+    -> Text
+    -> m ()
+selectOption wdCore sessApi topElem opt = do
+  optIds <- WDT.getSuccessValue <$> findElementsFromElement topElem (WDT.TagName "option")
+  for_ optIds $ \optId -> do
+    let optElem = _mkElement wdCore sessApi optId
+    optText <- WDT.getSuccessValue <$> getElementProperty optElem "value"
+    when (optText == WDT.Textual opt) $
+      void $ elementClick optElem

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TypeFamilies      #-}
 module General.UnitTests where
@@ -22,8 +23,12 @@ import           Protocol.Webdriver.ClientAPI       (WDCore (..))
 import qualified Protocol.Webdriver.ClientAPI       as W
 import qualified Protocol.Webdriver.ClientAPI.Types as W
 
+import qualified Data.Vector as Vector
+import qualified Waargonaut.Attoparsec as Waarg
+import qualified Waargonaut.Generic as Waarg
+
 import           Clay.Elements                      (input)
-import           Clay.Selector                      (byId, ( # ))
+import           Clay.Selector                      (byId, selectorFromText, ( # ))
 
 import           General.Types
 
@@ -41,6 +46,10 @@ openSession core = (\i -> Sess i (_mkSession core i)) . W._sessionId . W.getSucc
 
 closeSession :: Sess -> IO ()
 closeSession = void . W.deleteSession . _sessClient
+
+fetchElement :: W.LocateUsing -> Env -> W.SessionAPI (AsClientT IO) -> IO (W.ElementAPI (AsClientT IO))
+fetchElement elemLoc env client = _mkElement (_envWDCore env) client . W.getSuccessValue
+  <$> W.findElement client elemLoc
 
 fetchInputElement :: Text -> Env -> W.SessionAPI (AsClientT IO) -> IO (W.ElementAPI (AsClientT IO))
 fetchInputElement elemId env client = _mkElement (_envWDCore env) client . W.getSuccessValue
@@ -70,6 +79,24 @@ testPrompt iosess = testGroup "Prompt actions"
     triggerPrompt client = client <$ W.executeScript client
       (W.ExecuteScript ("window.prompt(\"" <> promptText <> "\")") mempty)
 
+testSelectDropdownOption :: IO Env -> IO Sess -> TestTree
+testSelectDropdownOption ioenv iosess = testCaseSteps "Select dropdown element" $ \step -> do
+  env <- ioenv
+  client <- _sessClient <$> iosess
+
+  let desiredOption = "hamster"
+
+  step "Find <select> element"
+  eClient <- fetchElement (W.ByCss $ selectorFromText "#pet-select") env client
+
+  step $ T.unpack $ "Select the " <> desiredOption <> " option"
+  _ <- W.selectOption (_envWDCore env) client eClient desiredOption
+
+  step "Get the 'value' of the selected option"
+  selected <- W.getSuccessValue <$> W.getElementProperty eClient "value"
+
+  selected @?= W.Textual desiredOption
+
 testPerformKeyActions :: IO Sess -> TestTree
 testPerformKeyActions iosess = testCaseSteps "Perform keyboard actions" $ \step -> do
   client <- _sessClient <$> iosess
@@ -83,7 +110,7 @@ testPerformKeyActions iosess = testCaseSteps "Perform keyboard actions" $ \step 
 
   -- reset the page
   W.refresh client
-  
+
   nameInp <- findElemId $ input # byId nameInputId
   occInp <- findElemId $ input # byId occupationInputId
 
@@ -106,7 +133,24 @@ testExampleCode start stop = withResource start stop $ \ioenv -> testCase "Examp
 unitTests :: IO Env -> (Env -> IO ()) -> TestTree
 unitTests start stop = withResource start stop $ \ioenv ->
   withResource (ioenv >>= openSession . _envWDCore) closeSession $ \iosess -> testGroup "Unit Tests"
-  [ testCase "navigateTo" $ do
+  [ testCase "Decode : (Vector ElementId)" $
+      let
+        inp = "{\"value\":[{\"element-6066-11e4-a52e-4f735466cecf\":\"9b53211e-dcf7-4d5f-b1a8-3dd0b54ed363\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"647d73e0-73a7-437b-aa39-6bcf7e80deab\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"aa447c8c-8b07-428e-82ca-bed7e310eac7\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"7fd645b0-ffbb-4c27-a553-8157fba64867\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"cdfea5c7-e123-4a12-b71b-e70c6b7aa10e\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"897c53eb-f49b-4da9-904b-412e31d9c45f\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"111cefae-424d-43c3-9729-03c74ab81141\"}]}"
+        res = W.Success $ Vector.fromList
+          [ W.ElementId "9b53211e-dcf7-4d5f-b1a8-3dd0b54ed363"
+          , W.ElementId "647d73e0-73a7-437b-aa39-6bcf7e80deab"
+          , W.ElementId "aa447c8c-8b07-428e-82ca-bed7e310eac7"
+          , W.ElementId "7fd645b0-ffbb-4c27-a553-8157fba64867"
+          , W.ElementId "cdfea5c7-e123-4a12-b71b-e70c6b7aa10e"
+          , W.ElementId "897c53eb-f49b-4da9-904b-412e31d9c45f"
+          , W.ElementId "111cefae-424d-43c3-9729-03c74ab81141"
+          ]
+        d = (Waarg.untag $ Waarg.mkDecoder @W.WDJson)
+        p = Waarg.pureDecodeAttoparsecByteString d
+      in
+        p inp @?= Right res
+
+  , testCase "navigateTo" $ do
       client <- _sessClient <$> iosess
       let target = W.WDUri [uri|http://localhost:9999/|]
       currentUri <- W.navigateTo client target >> W.getSuccessValue <$> W.getCurrentUrl client
@@ -119,7 +163,7 @@ unitTests start stop = withResource start stop $ \ioenv ->
         idAttr @?= W.Textual "input-name"
 
     , testCase "Input to non-text type input" $ do
-        numI <- uncurry (fetchInputElement "input-age") =<< liftA2 (,) ioenv (_sessClient <$> iosess) 
+        numI <- uncurry (fetchInputElement "input-age") =<< liftA2 (,) ioenv (_sessClient <$> iosess)
         W.elementSendKeys numI (W.ElementSendKeys "33") *> hasTextVal numI "33"
 
     , testCaseSteps "getProperty Types" $ \step -> do
@@ -138,6 +182,7 @@ unitTests start stop = withResource start stop $ \ioenv ->
         step "clearElement"          *> W.elementClear elemClient
         step "element is cleared"    *> hasTextVal elemClient mempty
 
+    , testSelectDropdownOption ioenv iosess
     , testPrompt iosess
     , testPerformKeyActions iosess
 
@@ -150,7 +195,7 @@ unitTests start stop = withResource start stop $ \ioenv ->
   where
     fetchElemClient ioenv iosess =
       liftA2 (,) ioenv (_sessClient <$> iosess)
-      >>= uncurry (fetchInputElement nameInputId)
+        >>= uncurry (fetchInputElement nameInputId)
 
     hasTextVal cli v =
       (W.getSuccessValue <$> W.getElementProperty cli "value") >>=

@@ -15,8 +15,7 @@ import           Test.Tasty                   (TestTree, defaultIngredients,
 import           Test.Tasty.Hedgehog          (testProperty)
 import           Test.Tasty.Options           (OptionDescription (..))
 
-import           Hedgehog                     (evalIO,
-                                               forAll, property, withTests)
+import           Hedgehog                     (evalIO, forAll, property, withTests)
 
 import qualified Hedgehog.Gen                 as Gen
 import qualified Hedgehog.Range               as Range
@@ -37,7 +36,7 @@ managedSession f ioenv = withResource
 prop_textInput :: IO Env -> (Env -> IO ()) -> TestTree
 prop_textInput start stop = withResource start stop (managedSession smt)
   where
-    smt ctx = testProperty "Enter some text." . property $ do
+    smt ctx = testProperty "Enter some text." . withTests 10 . property $ do
       (env, sessApi) <- evalIO ctx
       cmds <- forAll $ Gen.list (Range.linear 10 50) genCommand
       evalCommands cmds env sessApi

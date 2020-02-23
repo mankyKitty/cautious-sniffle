@@ -8,7 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Commands where
 
-import           Control.Lens                       (use, (^.), (?=), (.=), (%=))
+import           Control.Lens                       (use, (^.), (.=), (%=))
 import           Control.Monad                      (void, unless, when)
 import           Control.Monad.IO.Class             (MonadIO)
 import Control.Monad.State (MonadState, evalStateT)
@@ -67,7 +67,6 @@ cSendKeys
 cSendKeys inputText = do
   -- Require
   mTargetEl <- use modelElementApi
-  checkedKeys <- use modelKeysChecked
 
   case mTargetEl of
     Just targetEl -> do

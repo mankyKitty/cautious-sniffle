@@ -187,7 +187,8 @@ instance JsonEncode WDJson a => JsonEncode WDJson (Vector a) where
   mkEncoder = E.traversable <$> mkEncoder
 
 instance JsonDecode WDJson a => JsonDecode WDJson (Vector a) where
-  mkDecoder = D.withCursor . D.rightwardSnoc V.empty <$> mkDecoder
+  mkDecoder = mkDecoder <&> \d -> D.withCursor $ \c ->
+    D.try (D.down c) >>= maybe (pure V.empty) (D.rightwardSnoc V.empty d)
 
 -- | This package tries to be a faithful implementation of the W3C
 -- WebDriver Specification, as such the types and their names will be the

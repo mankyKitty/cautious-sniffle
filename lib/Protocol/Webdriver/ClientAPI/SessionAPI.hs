@@ -39,7 +39,7 @@ import           Servant.API.Client.HollowBody              (HollowBody)
 
 -- | Record containing the commands for interacting with an element.
 data ElementAPI route = ElementAPI
-  { -- | Try to retrieve the value of the given attribute. [spec](https://w3c.github.io/webdriver/#get-element-attribute) 
+  { -- | Try to retrieve the value of the given attribute. [spec](https://w3c.github.io/webdriver/#get-element-attribute)
     getElementAttribute     :: route :- "attribute" :> Capture "name" Text :> Get '[WaargJSON WDJson] (Success ByteString)
     -- | Clear the contents of an editable element. [spec](https://w3c.github.io/webdriver/#element-clear)
   , elementClear            :: route :- "clear" :> HollowBody '[WaargJSON WDJson] :> Post '[WaargJSON WDJson] (Success ())
